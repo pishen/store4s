@@ -1,66 +1,56 @@
 package scalastore
 
-import com.google.cloud.datastore.Entity
+import com.google.cloud.datastore.BooleanValue
+import com.google.cloud.datastore.EntityValue
 import com.google.cloud.datastore.FullEntity
 import com.google.cloud.datastore.IncompleteKey
-import shapeless._
-import shapeless.labelled._
-import scala.reflect._
+import com.google.cloud.datastore.LongValue
+import com.google.cloud.datastore.StringValue
+import com.google.cloud.datastore.Value
+import magnolia._
+import scala.language.experimental.macros
 
-trait Encoder[A] {
-  def builder(obj: A): FullEntity.Builder[IncompleteKey]
-
-  def encode(obj: A): FullEntity[IncompleteKey] = builder(obj).build()
-
-  def encode(obj: A, name: String)(implicit
-      tag: ClassTag[A],
-      datastore: Datastore
-  ) = {
-    val className = classTag[A].runtimeClass.getSimpleName()
-    val key = datastore.keyFactory.setKind(className).newKey(name)
-    builder(obj).setKey(key).build()
-  }
-
-  def encode(obj: A, id: Long)(implicit
-      tag: ClassTag[A],
-      datastore: Datastore
-  ) = {
-    val className = classTag[A].runtimeClass.getSimpleName()
-    val key = datastore.keyFactory.setKind(className).newKey(id)
-    builder(obj).setKey(key).build()
-  }
+trait ValueEncoder[T] {
+  type Out
+  def encode(t: T): Value[Out]
 }
 
-object Encoder {
-  def apply[A](implicit enc: Encoder[A]): Encoder[A] = enc
-
-  def create[A](f: A => FullEntity.Builder[IncompleteKey]) = new Encoder[A] {
-    def builder(obj: A) = f(obj)
+object ValueEncoder {
+  def create[T, O](f: T => Value[O]) = new ValueEncoder[T] {
+    type Out = O
+    def encode(t: T) = f(t)
   }
 
-  implicit val hnilEncoder: Encoder[HNil] = create(_ => FullEntity.newBuilder())
+  implicit val stringEncoder = create(StringValue.of)
+  implicit val longEncoder = create(LongValue.of)
+  implicit val intEncoder = create((i: Int) => LongValue.of(i.toLong))
+  implicit val booleanEncoder = create(BooleanValue.of)
+}
 
-  implicit def hlistEncoder[K <: Symbol, H, T <: HList](implicit
-      witness: Witness.Aux[K],
-      hEncoder: ValueEncoder[H],
-      tEncoder: Encoder[T]
-  ): Encoder[FieldType[K, H] :: T] = {
-    val fieldName = witness.value.name
-    create { hlist =>
-      tEncoder.builder(hlist.tail).set(fieldName, hEncoder.encode(hlist.head))
+trait EntityEncoder[T] extends ValueEncoder[T] {
+  def encodeEntity(t: T): FullEntity[IncompleteKey]
+}
+
+object EntityEncoder {
+  type Typeclass[T] = ValueEncoder[T]
+
+  def combine[T](ctx: CaseClass[ValueEncoder, T]): EntityEncoder[T] = new EntityEncoder[T] {
+    type Out = FullEntity[_]
+
+    def encodeEntity(t: T) = {
+      val eb = ctx.parameters.foldLeft(FullEntity.newBuilder()) { (eb, p) =>
+        eb.set(
+          p.label,
+          p.typeclass.encode(p.dereference(t))
+        )
+      }
+      eb.build()
+    }
+
+    def encode(t: T) = {
+      EntityValue.of(encodeEntity(t))
     }
   }
 
-  implicit def genericEncoder[A: ClassTag, H <: HList](implicit
-      generic: LabelledGeneric.Aux[A, H],
-      hEncoder: Encoder[H],
-      datastore: Datastore
-  ): Encoder[A] = {
-    val className = classTag[A].runtimeClass.getSimpleName()
-    println(className)
-    val key = datastore.keyFactory.setKind(className).newKey()
-    create { obj =>
-      hEncoder.builder(generic.to(obj)).setKey(key)
-    }
-  }
+  implicit def gen[T]: EntityEncoder[T] = macro Magnolia.gen[T]
 }

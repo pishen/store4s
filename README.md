@@ -1,12 +1,34 @@
 # scalastore
 
 ```scala
-case class User(name: String, age: Int)
+case class Task(category: String, done: Boolean, priority: Int, description: String)
 
-FullEntity.newBuilder(keyFactory.setKind("User"))
-  .set("name", user.name)
-  .set("age", user.age)
+//google-cloud-java
+FullEntity.newBuilder(keyFactory.setKind("Task"))
+  .set("category", "Personal")
+  .set("done", false)
+  .set("priority", 4)
+  .set("description", "Learn Cloud Datastore")
   .build()
 
-Encoder[User].encode(user)
+//scalastore
+Task("Personal", false, 4, "Learn Cloud Datastore").asEntity
+
+//google-cloud-java
+Query.newEntityQueryBuilder()
+  .setKind("Task")
+  .setFilter(
+    CompositeFilter.and(
+      PropertyFilter.eq("done", false),
+      PropertyFilter.ge("priority", 4)
+    )
+  )
+  .setOrderBy(OrderBy.desc("priority"))
+  .build()
+
+//scalastore
+Query.from[Task]
+  .filter(_.done == false)
+  .filter(_.priority >= 4)
+  .sortBy(_.priority)
 ```
