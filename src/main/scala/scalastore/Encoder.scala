@@ -34,23 +34,24 @@ trait EntityEncoder[T] extends ValueEncoder[T] {
 object EntityEncoder {
   type Typeclass[T] = ValueEncoder[T]
 
-  def combine[T](ctx: CaseClass[ValueEncoder, T]): EntityEncoder[T] = new EntityEncoder[T] {
-    type Out = FullEntity[_]
+  def combine[T](ctx: CaseClass[ValueEncoder, T]): EntityEncoder[T] =
+    new EntityEncoder[T] {
+      type Out = FullEntity[_]
 
-    def encodeEntity(t: T) = {
-      val eb = ctx.parameters.foldLeft(FullEntity.newBuilder()) { (eb, p) =>
-        eb.set(
-          p.label,
-          p.typeclass.encode(p.dereference(t))
-        )
+      def encodeEntity(t: T) = {
+        val eb = ctx.parameters.foldLeft(FullEntity.newBuilder()) { (eb, p) =>
+          eb.set(
+            p.label,
+            p.typeclass.encode(p.dereference(t))
+          )
+        }
+        eb.build()
       }
-      eb.build()
-    }
 
-    def encode(t: T) = {
-      EntityValue.of(encodeEntity(t))
+      def encode(t: T) = {
+        EntityValue.of(encodeEntity(t))
+      }
     }
-  }
 
   implicit def gen[T]: EntityEncoder[T] = macro Magnolia.gen[T]
 }
