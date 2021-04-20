@@ -49,8 +49,6 @@ object EntityEncoder {
 
   def combine[T](ctx: CaseClass[ValueEncoder, T]): EntityEncoder[T] =
     new EntityEncoder[T] {
-      type Out = FullEntity[_]
-
       def encodeEntity[K <: IncompleteKey](t: T, z: FullEntity.Builder[K]) = {
         val eb = ctx.parameters.foldLeft(z) { (eb, p) =>
           eb.set(

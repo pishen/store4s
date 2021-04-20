@@ -15,6 +15,17 @@ FullEntity.newBuilder(keyFactory.setKind("Task"))
 Task("Personal", false, 4, "Learn Cloud Datastore").asEntity
 
 //google-cloud-java
+Task(
+  entity.getString("category"),
+  entity.getBoolean("done"),
+  entity.getLong("priority").toInt,
+  entity.getString("description")
+)
+
+//scalastore
+EntityDecoder[Task].decodeEntity(entity)
+
+//google-cloud-java
 Query.newEntityQueryBuilder()
   .setKind("Task")
   .setFilter(
