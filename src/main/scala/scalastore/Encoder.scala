@@ -11,6 +11,8 @@ trait ValueEncoder[T] {
 }
 
 object ValueEncoder {
+  def apply[T](implicit enc: ValueEncoder[T]) = enc
+
   def create[T](f: T => Value[_]) = new ValueEncoder[T] {
     def encode(t: T) = f(t)
   }
@@ -46,6 +48,8 @@ trait EntityEncoder[T] extends ValueEncoder[T] {
 
 object EntityEncoder {
   type Typeclass[T] = ValueEncoder[T]
+
+  def apply[T](implicit enc: EntityEncoder[T]) = enc
 
   def combine[T](ctx: CaseClass[ValueEncoder, T]): EntityEncoder[T] =
     new EntityEncoder[T] {

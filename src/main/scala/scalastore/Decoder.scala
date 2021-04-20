@@ -12,6 +12,8 @@ trait ValueDecoder[T] {
 }
 
 object ValueDecoder {
+  def apply[T](implicit dec: ValueDecoder[T]) = dec
+
   def create[V, T](f: V => T) = new ValueDecoder[T] {
     def decode(v: Value[_]) = Try(v.asInstanceOf[V]).toEither.map(f)
   }
@@ -61,6 +63,8 @@ object EntityDecoder {
   type Typeclass[T] = ValueDecoder[T]
 
   case class DecodeException(errs: List[Throwable]) extends Exception
+
+  def apply[T](implicit dec: EntityDecoder[T]) = dec
 
   def combine[T](ctx: CaseClass[ValueDecoder, T]): EntityDecoder[T] =
     new EntityDecoder[T] {
