@@ -1,6 +1,7 @@
 package scalastore
 
 import com.google.cloud.datastore.{Datastore => _, _}
+import java.sql.Timestamp
 import magnolia._
 import scala.jdk.CollectionConverters._
 import scala.language.experimental.macros
@@ -11,22 +12,45 @@ trait ValueDecoder[T] {
 }
 
 object ValueDecoder {
-  def create[T](f: Value[_] => T) = new ValueDecoder[T] {
-    def decode(v: Value[_]) = Try(f(v)).toEither
+  def create[V, T](f: V => T) = new ValueDecoder[T] {
+    def decode(v: Value[_]) = Try(v.asInstanceOf[V]).toEither.map(f)
   }
 
-  implicit val blobDecoder = create[Blob](_.asInstanceOf[BlobValue].get)
-  implicit val booleanDecoder =
-    create[Boolean](_.asInstanceOf[BooleanValue].get)
-  implicit val doubleDecoder = create[Double](_.asInstanceOf[DoubleValue].get)
-  implicit val keyDecoder = create[Key](_.asInstanceOf[KeyValue].get)
-  implicit val latLngDecoder = create[LatLng](_.asInstanceOf[LatLngValue].get)
-
-  implicit val intDecoder = create[Int](_.asInstanceOf[LongValue].get.toInt)
-  implicit val longDecoder = create[Long](_.asInstanceOf[LongValue].get)
-  implicit val stringDecoder = create(_.asInstanceOf[StringValue].get)
+  implicit val blobDecoder = create[BlobValue, Blob](_.get)
+  implicit val booleanDecoder = create[BooleanValue, Boolean](_.get)
+  implicit val doubleDecoder = create[DoubleValue, Double](_.get)
+  implicit val keyDecoder = create[KeyValue, Key](_.get)
+  implicit val latLngDecoder = create[LatLngValue, LatLng](_.get)
+  implicit def seqDecoder[T](implicit vd: ValueDecoder[T]) =
+    new ValueDecoder[Seq[T]] {
+      //TODO: can be simplified by cats Traverse
+      def decode(v: Value[_]) = Try(v.asInstanceOf[ListValue]).toEither
+        .flatMap { lv =>
+          lv.get.asScala.toSeq
+            .foldLeft[Either[Throwable, Seq[T]]](Right(Seq.empty[T])) {
+              (either, v) =>
+                for {
+                  seq <- either
+                  t <- vd.decode(v)
+                } yield {
+                  seq :+ t
+                }
+            }
+        }
+    }
+  implicit def optionDecoder[T](implicit vd: ValueDecoder[T]) =
+    new ValueDecoder[Option[T]] {
+      def decode(v: Value[_]) = if (v.isInstanceOf[NullValue]) {
+        Right(None)
+      } else {
+        vd.decode(v).map(t => Some(t))
+      }
+    }
+  implicit val intDecoder = create[LongValue, Int](_.get.toInt)
+  implicit val longDecoder = create[LongValue, Long](_.get)
+  implicit val stringDecoder = create[StringValue, String](_.get)
   implicit val timestampDecoder =
-    create(_.asInstanceOf[TimestampValue].get.toSqlTimestamp)
+    create[TimestampValue, Timestamp](_.get.toSqlTimestamp)
 }
 
 trait EntityDecoder[T] extends ValueDecoder[T] {
