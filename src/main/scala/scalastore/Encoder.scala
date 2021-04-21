@@ -2,6 +2,7 @@ package scalastore
 
 import com.google.cloud.Timestamp
 import com.google.cloud.datastore.{Datastore => _, _}
+import com.google.datastore.v1
 import magnolia._
 import scala.jdk.CollectionConverters._
 import scala.language.experimental.macros
@@ -55,10 +56,7 @@ object EntityEncoder {
     new EntityEncoder[T] {
       def encodeEntity[K <: IncompleteKey](t: T, z: FullEntity.Builder[K]) = {
         val eb = ctx.parameters.foldLeft(z) { (eb, p) =>
-          eb.set(
-            p.label,
-            p.typeclass.encode(p.dereference(t))
-          )
+          eb.set(p.label, p.typeclass.encode(p.dereference(t)))
         }
         eb.build()
       }
@@ -80,4 +78,112 @@ object EntityEncoder {
     }
 
   implicit def gen[T]: EntityEncoder[T] = macro Magnolia.gen[T]
+}
+
+// Datastore V1
+trait ValueEncoderV1[T] {
+  def encode(t: T): v1.Value
+}
+
+object ValueEncoderV1 {
+  def apply[T](implicit enc: ValueEncoderV1[T]) = enc
+
+  def create[T](f: v1.Value.Builder => T => v1.Value.Builder) =
+    new ValueEncoderV1[T] {
+      def encode(t: T) = f(v1.Value.newBuilder)(t).build()
+    }
+
+  implicit val blobEncoder =
+    create[com.google.protobuf.ByteString](_.setBlobValue)
+  implicit val booleanEncoder = create(_.setBooleanValue)
+  implicit val doubleEncoder = create(_.setDoubleValue)
+  implicit val keyEncoder = create[v1.Key](_.setKeyValue)
+  implicit val latLngEncoder =
+    create[com.google.`type`.LatLng](_.setGeoPointValue)
+  implicit def seqEncoder[T](implicit ve: ValueEncoderV1[T]) =
+    create[Seq[T]](b =>
+      seq =>
+        b.setArrayValue(
+          v1.ArrayValue
+            .newBuilder()
+            .addAllValues(seq.map(t => ve.encode(t)).asJava)
+        )
+    )
+  implicit def optionEncoder[T](implicit ve: ValueEncoderV1[T]) =
+    new ValueEncoderV1[Option[T]] {
+      def encode(opt: Option[T]) = opt match {
+        case Some(t) => ve.encode(t)
+        case None =>
+          v1.Value
+            .newBuilder()
+            .setNullValue(com.google.protobuf.NullValue.NULL_VALUE)
+            .build()
+      }
+    }
+  implicit val intEncoder = create[Int](b => t => b.setIntegerValue(t.toLong))
+  implicit val longEncoder = create(_.setIntegerValue)
+  implicit val stringEncoder = create(_.setStringValue)
+  implicit val timestampEncoder =
+    create[com.google.protobuf.Timestamp](_.setTimestampValue)
+}
+
+trait EntityEncoderV1[T] extends ValueEncoderV1[T] {
+  def encodeEntity(t: T)(implicit partitionId: v1.PartitionId): v1.Entity
+
+  def encodeEntity(t: T, keyName: String)(implicit
+      partitionId: v1.PartitionId
+  ): v1.Entity
+}
+
+object EntityEncoderV1 {
+  type Typeclass[T] = ValueEncoderV1[T]
+
+  def apply[T](implicit enc: EntityEncoderV1[T]) = enc
+
+  def combine[T](ctx: CaseClass[ValueEncoderV1, T]): EntityEncoderV1[T] =
+    new EntityEncoderV1[T] {
+      def encodeEntity(t: T, key: v1.Key) = {
+        val eb = ctx.parameters.foldLeft(v1.Entity.newBuilder().setKey(key)) {
+          (eb, p) =>
+            eb.putProperties(p.label, p.typeclass.encode(p.dereference(t)))
+        }
+        eb.build()
+      }
+
+      def encodeEntity(t: T)(implicit partitionId: v1.PartitionId) = {
+        val path = v1.Key.PathElement
+          .newBuilder()
+          .setKind(ctx.typeName.short)
+          .build()
+        val key = v1.Key
+          .newBuilder()
+          .setPartitionId(partitionId)
+          .addPath(path)
+          .build()
+        encodeEntity(t, key)
+      }
+
+      def encodeEntity(t: T, keyName: String)(implicit
+          partitionId: v1.PartitionId
+      ) = {
+        val path = v1.Key.PathElement
+          .newBuilder()
+          .setKind(ctx.typeName.short)
+          .setName(keyName)
+          .build()
+        val key = v1.Key
+          .newBuilder()
+          .setPartitionId(partitionId)
+          .addPath(path)
+          .build()
+        encodeEntity(t, key)
+      }
+
+      def encode(t: T) = {
+        val entity = encodeEntity(t, v1.Key.newBuilder().build())
+        v1.Value.newBuilder().setEntityValue(entity).build()
+      }
+    }
+
+  implicit def gen[T]: EntityEncoderV1[T] = macro Magnolia.gen[T]
 }

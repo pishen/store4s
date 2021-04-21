@@ -1,4 +1,6 @@
-# scalastore
+# Scalastore
+
+A Scala library for Google Cloud Datastore
 
 ```scala
 case class Task(category: String, done: Boolean, priority: Int, description: String)
