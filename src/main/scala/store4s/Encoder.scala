@@ -1,4 +1,4 @@
-package scalastore
+package store4s
 
 import com.google.cloud.Timestamp
 import com.google.cloud.datastore.{Datastore => _, _}

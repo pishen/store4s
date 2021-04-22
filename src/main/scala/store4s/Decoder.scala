@@ -1,4 +1,4 @@
-package scalastore
+package store4s
 
 import com.google.cloud.datastore.{Datastore => _, _}
 import com.google.datastore.v1

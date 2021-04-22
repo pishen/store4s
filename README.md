@@ -1,4 +1,4 @@
-# Scalastore
+# store4s
 
 A Scala library for Google Cloud Datastore
 
@@ -13,7 +13,7 @@ FullEntity.newBuilder(keyFactory.setKind("Task"))
   .set("description", "Learn Cloud Datastore")
   .build()
 
-//scalastore
+//store4s
 Task("Personal", false, 4, "Learn Cloud Datastore").asEntity
 
 //google-cloud-java
@@ -24,7 +24,7 @@ Task(
   entity.getString("description")
 )
 
-//scalastore
+//store4s
 EntityDecoder[Task].decodeEntity(entity)
 
 //google-cloud-java
@@ -39,7 +39,7 @@ Query.newEntityQueryBuilder()
   .setOrderBy(OrderBy.desc("priority"))
   .build()
 
-//scalastore
+//store4s
 Query.from[Task]
   .filter(_.done == false)
   .filter(_.priority >= 4)

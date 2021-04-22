@@ -1,4 +1,4 @@
-package scalastore
+package store4s
 
 import com.google.cloud.datastore
 import com.google.cloud.datastore.StructuredQuery.Filter
@@ -29,13 +29,13 @@ object Query {
     val typeName = weakTypeOf[T].typeSymbol.name.toString()
     val defs = weakTypeOf[T].members.toSeq.filterNot(_.isMethod).map { s =>
       val name = s.name.toString().trim()
-      q"val ${TermName(name)} = scalastore.Query.Property[${s.info}]($name)"
+      q"val ${TermName(name)} = store4s.Query.Property[${s.info}]($name)"
     }
 
     q"""
-      scalastore.Query(
+      store4s.Query(
         $typeName,
-        new scalastore.Selector {
+        new store4s.Selector {
           ..$defs
         }
       )

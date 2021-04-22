@@ -1,4 +1,4 @@
-name := "scalastore"
+name := "store4s"
 
 version := "0.1.0-SNAPSHOT"
 
@@ -14,11 +14,11 @@ organization := "net.pishen"
 licenses += "Apache-2.0" -> url(
   "https://www.apache.org/licenses/LICENSE-2.0.html"
 )
-homepage := Some(url("https://github.com/pishen/scalastore"))
+homepage := Some(url("https://github.com/pishen/store4s"))
 scmInfo := Some(
   ScmInfo(
-    url("https://github.com/pishen/scalastore"),
-    "scm:git@github.com:pishen/scalastore.git"
+    url("https://github.com/pishen/store4s"),
+    "scm:git@github.com:pishen/store4s.git"
   )
 )
 developers := List(

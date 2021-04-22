@@ -2,7 +2,7 @@ import com.google.cloud.datastore.StructuredQuery.CompositeFilter
 import com.google.cloud.datastore.StructuredQuery.Filter
 import com.google.datastore.v1.PartitionId
 
-package object scalastore {
+package object store4s {
   implicit class EncoderOps[T](t: T)(implicit
       enc: EntityEncoder[T],
       encCtx: EncoderContext
