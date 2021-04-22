@@ -5,7 +5,7 @@ import com.google.datastore.v1.PartitionId
 package object scalastore {
   implicit class EncoderOps[T](t: T)(implicit
       enc: EntityEncoder[T],
-      datastore: Datastore
+      encCtx: EncoderContext
   ) {
     def asEntity = enc.encodeEntity(t)
     def asEntity(keyName: String) = enc.encodeEntity(t, keyName)

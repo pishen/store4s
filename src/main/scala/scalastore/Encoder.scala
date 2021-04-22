@@ -37,13 +37,15 @@ object ValueEncoder {
     create((t: java.sql.Timestamp) => TimestampValue.of(Timestamp.of(t)))
 }
 
+case class EncoderContext(project: String, namespace: Option[String])
+
 trait EntityEncoder[T] extends ValueEncoder[T] {
   def encodeEntity(t: T)(implicit
-      datastore: Datastore
+      ctx: EncoderContext
   ): FullEntity[IncompleteKey]
 
   def encodeEntity(t: T, keyName: String)(implicit
-      datastore: Datastore
+      ctx: EncoderContext
   ): FullEntity[Key]
 }
 
@@ -54,21 +56,30 @@ object EntityEncoder {
 
   def combine[T](ctx: CaseClass[ValueEncoder, T]): EntityEncoder[T] =
     new EntityEncoder[T] {
-      def encodeEntity[K <: IncompleteKey](t: T, z: FullEntity.Builder[K]) = {
-        val eb = ctx.parameters.foldLeft(z) { (eb, p) =>
-          eb.set(p.label, p.typeclass.encode(p.dereference(t)))
-        }
-        eb.build()
+      def encodeEntity[K <: IncompleteKey](t: T, eb: FullEntity.Builder[K]) = {
+        ctx.parameters
+          .foldLeft(eb) { (eb, p) =>
+            eb.set(p.label, p.typeclass.encode(p.dereference(t)))
+          }
+          .build()
       }
 
-      def encodeEntity(t: T)(implicit datastore: Datastore) = {
-        val key = datastore.keyFactory.setKind(ctx.typeName.short).newKey()
+      def newKeyFactory(encCtx: EncoderContext) = {
+        encCtx.namespace
+          .map(new KeyFactory(encCtx.project, _))
+          .getOrElse(new KeyFactory(encCtx.project))
+          .setKind(ctx.typeName.short)
+      }
+
+      def encodeEntity(t: T)(implicit encCtx: EncoderContext) = {
+        val key = newKeyFactory(encCtx).newKey()
         encodeEntity(t, FullEntity.newBuilder(key))
       }
 
-      def encodeEntity(t: T, keyName: String)(implicit datastore: Datastore) = {
-        val key =
-          datastore.keyFactory.setKind(ctx.typeName.short).newKey(keyName)
+      def encodeEntity(t: T, keyName: String)(implicit
+          encCtx: EncoderContext
+      ) = {
+        val key = newKeyFactory(encCtx).newKey(keyName)
         encodeEntity(t, FullEntity.newBuilder(key))
       }
 
