@@ -2,15 +2,37 @@ package store4s
 
 import com.google.cloud.datastore
 import com.google.cloud.datastore.StructuredQuery.Filter
+import com.google.cloud.datastore.StructuredQuery.OrderBy
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter
 import scala.language.experimental.macros
 import scala.reflect.macros.whitebox.Context
 
 trait Selector
 
-case class Query[S <: Selector](kind: String, selector: S) {
-  val builder = datastore.Query.newEntityQueryBuilder().setKind(kind)
-  def filter(f: S => Filter) = builder.setFilter(f(selector))
+case class Query[S <: Selector](
+    kind: String,
+    selector: S,
+    filters: Seq[Filter] = Seq.empty,
+    orders: Seq[OrderBy] = Seq.empty
+) {
+  def build() = {
+    Some(datastore.Query.newEntityQueryBuilder().setKind(kind))
+      .map { eb =>
+        if (filters.isEmpty) eb
+        else eb.setFilter(filters.reduce(_ && _))
+      }
+      .map { eb =>
+        if (orders.isEmpty) eb
+        else if (orders.size == 1) eb.setOrderBy(orders.head)
+        else eb.setOrderBy(orders.head, orders.tail: _*)
+      }
+      .get
+      .build()
+  }
+  def filter(f: S => Filter) = this.copy(filters = filters :+ f(selector))
+  def sortBy(fs: S => Query.Property[_]*) = this.copy(
+    orders = fs.map(f => OrderBy.asc(f(selector).name))
+  )
 }
 
 object Query {

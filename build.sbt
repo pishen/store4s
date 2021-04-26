@@ -10,6 +10,8 @@ libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value % Provided
 )
 
+scalacOptions ++= Seq("-feature", "-deprecation")
+
 organization := "net.pishen"
 licenses += "Apache-2.0" -> url(
   "https://www.apache.org/licenses/LICENSE-2.0.html"

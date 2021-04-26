@@ -1,6 +1,7 @@
 import com.google.cloud.datastore.FullEntity
 import com.google.cloud.datastore.StructuredQuery.CompositeFilter
 import com.google.cloud.datastore.StructuredQuery.Filter
+import scala.language.implicitConversions
 
 package object store4s {
   implicit class EncoderOps[T](t: T)(implicit
@@ -17,5 +18,13 @@ package object store4s {
 
   implicit class FilterWrapper(left: Filter) {
     def &&(right: Filter): Filter = CompositeFilter.and(left, right)
+  }
+
+  implicit class BooleanProperty(p: Query.Property[Boolean]) {
+    def unary_! = p == false
+  }
+
+  implicit def booleanProperty2Filter(p: Query.Property[Boolean]): Filter = {
+    p == true
   }
 }
