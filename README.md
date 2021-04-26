@@ -41,7 +41,7 @@ Query.newEntityQueryBuilder()
 
 //store4s
 Query.from[Task]
-  .filter(_.done == false)
+  .filter(_.done)
   .filter(_.priority >= 4)
   .sortBy(_.priority)
 ```
