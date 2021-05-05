@@ -30,9 +30,7 @@ case class Query[S <: Selector](
       .build()
   }
   def filter(f: S => Filter) = this.copy(filters = filters :+ f(selector))
-  def sortBy(fs: S => Query.Property[_]*) = this.copy(
-    orders = fs.map(f => OrderBy.asc(f(selector).name))
-  )
+  def sortBy(fs: S => OrderBy*) = this.copy(orders = fs.map(f => f(selector)))
 }
 
 object Query {
@@ -42,6 +40,8 @@ object Query {
     def <(t: T): Filter = PropertyFilter.lt(name, enc.encode(t))
     def >=(t: T): Filter = PropertyFilter.ge(name, enc.encode(t))
     def <=(t: T): Filter = PropertyFilter.le(name, enc.encode(t))
+    def asc: OrderBy = OrderBy.asc(name)
+    def desc: OrderBy = OrderBy.desc(name)
   }
 
   def from[T]: Any = macro impl[T]

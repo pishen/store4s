@@ -43,5 +43,5 @@ Query.newEntityQueryBuilder()
 Query.from[Task]
   .filter(_.done)
   .filter(_.priority >= 4)
-  .sortBy(_.priority)
+  .sortBy(_.priority.desc)
 ```
