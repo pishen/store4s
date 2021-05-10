@@ -37,15 +37,11 @@ object ValueEncoder {
     create((t: java.sql.Timestamp) => TimestampValue.of(Timestamp.of(t)))
 }
 
-case class EncoderContext(project: String, namespace: Option[String])
-
 trait EntityEncoder[T] extends ValueEncoder[T] {
-  def encodeEntity(t: T)(implicit
-      ctx: EncoderContext
-  ): FullEntity[IncompleteKey]
+  def encodeEntity(t: T)(implicit ctx: KeyContext): FullEntity[IncompleteKey]
 
   def encodeEntity(t: T, keyName: String)(implicit
-      ctx: EncoderContext
+      ctx: KeyContext
   ): FullEntity[Key]
 }
 
@@ -64,22 +60,13 @@ object EntityEncoder {
           .build()
       }
 
-      def newKeyFactory(encCtx: EncoderContext) = {
-        encCtx.namespace
-          .map(new KeyFactory(encCtx.project, _))
-          .getOrElse(new KeyFactory(encCtx.project))
-          .setKind(ctx.typeName.short)
-      }
-
-      def encodeEntity(t: T)(implicit encCtx: EncoderContext) = {
-        val key = newKeyFactory(encCtx).newKey()
+      def encodeEntity(t: T)(implicit keyCtx: KeyContext) = {
+        val key = keyCtx.newKeyFactory(ctx.typeName.short).newKey()
         encodeEntity(t, FullEntity.newBuilder(key))
       }
 
-      def encodeEntity(t: T, keyName: String)(implicit
-          encCtx: EncoderContext
-      ) = {
-        val key = newKeyFactory(encCtx).newKey(keyName)
+      def encodeEntity(t: T, keyName: String)(implicit keyCtx: KeyContext) = {
+        val key = keyCtx.newKeyFactory(ctx.typeName.short).newKey(keyName)
         encodeEntity(t, FullEntity.newBuilder(key))
       }
 
