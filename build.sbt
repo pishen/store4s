@@ -4,14 +4,17 @@ version := "0.1.0-SNAPSHOT"
 
 scalaVersion := "2.13.5"
 
+crossScalaVersions := Seq("2.13.5", "2.12.13")
+
 libraryDependencies ++= Seq(
   "com.propensive" %% "magnolia" % "0.16.0",
   "com.google.cloud" % "google-cloud-datastore" % "1.105.9",
+  "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.3",
   "org.scala-lang" % "scala-reflect" % scalaVersion.value % Provided,
   "org.scalatest" %% "scalatest" % "3.2.7" % Test
 )
 
-scalacOptions ++= Seq("-feature", "-deprecation")
+scalacOptions ++= Seq("-feature", "-deprecation", "-language:higherKinds")
 
 organization := "net.pishen"
 licenses += "Apache-2.0" -> url(
