@@ -7,7 +7,8 @@ scalaVersion := "2.13.5"
 libraryDependencies ++= Seq(
   "com.propensive" %% "magnolia" % "0.16.0",
   "com.google.cloud" % "google-cloud-datastore" % "1.105.9",
-  "org.scala-lang" % "scala-reflect" % scalaVersion.value % Provided
+  "org.scala-lang" % "scala-reflect" % scalaVersion.value % Provided,
+  "org.scalatest" %% "scalatest" % "3.2.7" % Test
 )
 
 scalacOptions ++= Seq("-feature", "-deprecation")
