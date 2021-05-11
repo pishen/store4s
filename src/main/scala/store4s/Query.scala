@@ -18,7 +18,9 @@ case class Query[S <: Selector](
     selector: S,
     filters: Seq[Filter] = Seq.empty,
     orders: Seq[OrderBy] = Seq.empty,
-    limit: Option[Int] = None
+    limit: Option[Int] = None,
+    start: Option[Cursor] = None,
+    end: Option[Cursor] = None
 ) {
   def builder = {
     GQuery
@@ -27,10 +29,14 @@ case class Query[S <: Selector](
       .applyIf(filters.nonEmpty)(_.setFilter(filters.reduce(_ && _)))
       .applyIf(orders.nonEmpty)(_.setOrderBy(orders.head, orders.tail: _*))
       .applyIf(limit.nonEmpty)(_.setLimit(limit.get))
+      .applyIf(start.nonEmpty)(_.setStartCursor(start.get))
+      .applyIf(end.nonEmpty)(_.setEndCursor(end.get))
   }
   def filter(f: S => Filter) = this.copy(filters = filters :+ f(selector))
   def sortBy(fs: S => OrderBy*) = this.copy(orders = fs.map(f => f(selector)))
   def take(n: Int) = this.copy(limit = Some(n))
+  def startFrom(cursor: Cursor) = this.copy(start = Some(cursor))
+  def endAt(cursor: Cursor) = this.copy(end = Some(cursor))
   def run(implicit datastore: Datastore) = {
     val res = datastore.underlying.run(
       builder.build(),
@@ -52,7 +58,7 @@ object Query {
   }
   case class Result[V](values: Seq[V], cursor: Cursor)
 
-  def from[T]: Any = macro impl[T]
+  def apply[T]: Any = macro impl[T]
 
   def impl[T: c.WeakTypeTag](c: Context) = {
     import c.universe._

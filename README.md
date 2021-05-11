@@ -6,7 +6,7 @@ A Scala library for Google Cloud Datastore
 case class Task(category: String, done: Boolean, priority: Int, description: String)
 
 //google-cloud-java
-FullEntity.newBuilder(keyFactory.setKind("Task"))
+FullEntity.newBuilder(keyFactory.setKind("Task").newKey())
   .set("category", "Personal")
   .set("done", false)
   .set("priority", 4)
@@ -40,8 +40,8 @@ Query.newEntityQueryBuilder()
   .build()
 
 //store4s
-Query.from[Task]
-  .filter(_.done)
+Query[Task]
+  .filter(!_.done)
   .filter(_.priority >= 4)
   .sortBy(_.priority.desc)
 ```
