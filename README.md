@@ -4,7 +4,7 @@ A Scala library for [Google Cloud Datastore](https://cloud.google.com/datastore)
 
 ## Installation
 ```scala
-libraryDependencies += "net.pishen" %% "store4s" % "0.1.0-SNAPSHOT"
+libraryDependencies += "net.pishen" %% "store4s" % "0.1.0"
 ```
 
 ## Encoding
