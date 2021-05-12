@@ -35,6 +35,7 @@ developers := List(
     url = url("https://github.com/pishen")
   )
 )
+versionScheme := Some("early-semver")
 publishTo := {
   val nexus = "https://oss.sonatype.org/"
   if (isSnapshot.value) {
