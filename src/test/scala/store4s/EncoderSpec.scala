@@ -7,29 +7,21 @@ import com.google.datastore.v1
 import org.scalatest.flatspec.AnyFlatSpec
 
 class EncoderSpec extends AnyFlatSpec {
-  def keyFactory = new KeyFactory("my-project")
-  implicit val keyCtx = KeyContext("my-project", None)
+  def keyFactory = new KeyFactory("zombie-land-saga")
+  implicit val keyCtx = KeyContext("zombie-land-saga", None)
 
   "An EntityEncoder" should "generate same output as Google Cloud Java" in {
-    val taskKey = keyFactory.setKind("Task").newKey("sampleTask")
-    val taskG = Entity
-      .newBuilder(taskKey)
-      .set("category", "Personal")
-      .set("done", false)
-      .set("priority", 4)
-      .set("description", "Learn Cloud Datastore")
+    val zG = Entity
+      .newBuilder(keyFactory.setKind("Zombie").newKey("heroine"))
+      .set("number", 1)
+      .set("name", "Sakura Minamoto")
+      .set("girl", true)
       .build()
 
-    case class Task(
-        category: String,
-        done: Boolean,
-        priority: Int,
-        description: String
-    )
-    val taskS =
-      Task("Personal", false, 4, "Learn Cloud Datastore").asEntity("sampleTask")
+    case class Zombie(number: Int, name: String, girl: Boolean)
+    val zS = Zombie(1, "Sakura Minamoto", true).asEntity("heroine")
 
-    assert(taskG == taskS)
+    assert(zG == zS)
   }
 
   it should "support IncompleteKey" in {
@@ -69,38 +61,40 @@ class EncoderSpec extends AnyFlatSpec {
   it should "support nested entity" in {
     val hometown = FullEntity
       .newBuilder()
-      .set("country", "Taiwan")
-      .set("city", "Tainan")
+      .set("country", "Japan")
+      .set("city", "Saga")
       .build()
-    val userG = FullEntity
-      .newBuilder(keyFactory.setKind("User").newKey())
-      .set("name", "Pishen")
+    val zG = FullEntity
+      .newBuilder(keyFactory.setKind("Zombie").newKey())
+      .set("name", "Sakura")
       .set("hometown", hometown)
       .build()
 
     case class Hometown(country: String, city: String)
-    case class User(name: String, hometown: Hometown)
-    val userS = User("Pishen", Hometown("Taiwan", "Tainan")).asEntity
+    case class Zombie(name: String, hometown: Hometown)
+    val zS = Zombie("Sakura", Hometown("Japan", "Saga")).asEntity
 
-    assert(userG == userS)
+    assert(zG == zS)
   }
 
   it should "support v1 entity" in {
-    val partitionId = v1.PartitionId.newBuilder().setProjectId("my-project")
-    val path = v1.Key.PathElement.newBuilder().setKind("User")
+    val partitionId = v1.PartitionId
+      .newBuilder()
+      .setProjectId("zombie-land-saga")
+    val path = v1.Key.PathElement.newBuilder().setKind("Zombie")
     val key = v1.Key.newBuilder().setPartitionId(partitionId).addPath(path)
-    val userG = v1.Entity
+    val zG = v1.Entity
       .newBuilder()
       .setKey(key)
       .putProperties(
         "name",
-        v1.Value.newBuilder().setStringValue("John").build()
+        v1.Value.newBuilder().setStringValue("Sakura").build()
       )
       .build()
 
-    case class User(name: String)
-    val userS = User("John").asEntity.toV1
+    case class Zombie(name: String)
+    val zS = Zombie("Sakura").asEntity.toV1
 
-    assert(userG == userS)
+    assert(zG == zS)
   }
 }
