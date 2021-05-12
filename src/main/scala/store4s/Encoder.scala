@@ -42,7 +42,7 @@ trait EntityEncoder[T] extends ValueEncoder[T] {
 
   def encodeEntity(t: T, keyName: String)(implicit
       ctx: KeyContext
-  ): FullEntity[Key]
+  ): Entity
 }
 
 object EntityEncoder {
@@ -52,26 +52,25 @@ object EntityEncoder {
 
   def combine[T](ctx: CaseClass[ValueEncoder, T]): EntityEncoder[T] =
     new EntityEncoder[T] {
-      def encodeEntity[K <: IncompleteKey](t: T, eb: FullEntity.Builder[K]) = {
+      def fold[B <: BaseEntity.Builder[_, B]](t: T, eb: B) = {
         ctx.parameters
           .foldLeft(eb) { (eb, p) =>
             eb.set(p.label, p.typeclass.encode(p.dereference(t)))
           }
-          .build()
       }
 
       def encodeEntity(t: T)(implicit keyCtx: KeyContext) = {
         val key = keyCtx.newKeyFactory(ctx.typeName.short).newKey()
-        encodeEntity(t, FullEntity.newBuilder(key))
+        fold(t, FullEntity.newBuilder(key)).build()
       }
 
       def encodeEntity(t: T, keyName: String)(implicit keyCtx: KeyContext) = {
         val key = keyCtx.newKeyFactory(ctx.typeName.short).newKey(keyName)
-        encodeEntity(t, FullEntity.newBuilder(key))
+        fold(t, Entity.newBuilder(key)).build()
       }
 
       def encode(t: T) = {
-        EntityValue.of(encodeEntity(t, FullEntity.newBuilder()))
+        EntityValue.of(fold(t, FullEntity.newBuilder()).build())
       }
     }
 
