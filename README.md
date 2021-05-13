@@ -1,4 +1,4 @@
-# Store4s
+# store4s
 
 A Scala library for [Google Cloud Datastore](https://cloud.google.com/datastore), using Google's [Java client](https://github.com/googleapis/java-datastore) underneath. This library provides a compile-time mapping between case classes and Datastore entities using [Magnolia](https://github.com/propensive/magnolia), and a type-safe query DSL implemented by Scala Macros.
 
