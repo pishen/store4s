@@ -31,7 +31,7 @@ package object store4s {
     }
   }
 
-  implicit class EncoderOps[T](t: T)(implicit
+  implicit class EntityEncoderOps[T](t: T)(implicit
       enc: EntityEncoder[T],
       keyCtx: KeyContext
   ) {
@@ -39,7 +39,7 @@ package object store4s {
     def asEntity(keyName: String) = enc.encodeEntity(t, keyName)
   }
 
-  implicit class EntityOps(entity: FullEntity[_]) {
+  implicit class EntityWrapper(entity: FullEntity[_]) {
     def toV1 = EntityEncoder.toV1Entity(entity)
   }
 
@@ -47,7 +47,7 @@ package object store4s {
     def &&(right: Filter): Filter = CompositeFilter.and(left, right)
   }
 
-  implicit class BooleanProperty(p: Query.Property[Boolean]) {
+  implicit class BooleanPropertyWrapper(p: Query.Property[Boolean]) {
     def unary_! = p == false
   }
 

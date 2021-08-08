@@ -43,6 +43,8 @@ trait EntityEncoder[T] extends ValueEncoder[T] {
   def encodeEntity(t: T, keyName: String)(implicit
       ctx: KeyContext
   ): Entity
+
+  def encodeEntity(t: T, id: Long)(implicit ctx: KeyContext): Entity
 }
 
 object EntityEncoder {
@@ -66,6 +68,11 @@ object EntityEncoder {
 
       def encodeEntity(t: T, keyName: String)(implicit keyCtx: KeyContext) = {
         val key = keyCtx.newKeyFactory(ctx.typeName.short).newKey(keyName)
+        fold(t, Entity.newBuilder(key)).build()
+      }
+
+      def encodeEntity(t: T, id: Long)(implicit keyCtx: KeyContext) = {
+        val key = keyCtx.newKeyFactory(ctx.typeName.short).newKey(id)
         fold(t, Entity.newBuilder(key)).build()
       }
 
