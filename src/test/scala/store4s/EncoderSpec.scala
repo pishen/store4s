@@ -3,7 +3,6 @@ package store4s
 import com.google.cloud.datastore.Entity
 import com.google.cloud.datastore.FullEntity
 import com.google.cloud.datastore.KeyFactory
-import com.google.datastore.v1
 import org.scalatest.flatspec.AnyFlatSpec
 
 class EncoderSpec extends AnyFlatSpec {
@@ -73,27 +72,6 @@ class EncoderSpec extends AnyFlatSpec {
     case class Hometown(country: String, city: String)
     case class Zombie(name: String, hometown: Hometown)
     val zS = Zombie("Sakura", Hometown("Japan", "Saga")).asEntity
-
-    assert(zG == zS)
-  }
-
-  it should "support v1 entity" in {
-    val partitionId = v1.PartitionId
-      .newBuilder()
-      .setProjectId("zombie-land-saga")
-    val path = v1.Key.PathElement.newBuilder().setKind("Zombie")
-    val key = v1.Key.newBuilder().setPartitionId(partitionId).addPath(path)
-    val zG = v1.Entity
-      .newBuilder()
-      .setKey(key)
-      .putProperties(
-        "name",
-        v1.Value.newBuilder().setStringValue("Sakura").build()
-      )
-      .build()
-
-    case class Zombie(name: String)
-    val zS = Zombie("Sakura").asEntity.toV1
 
     assert(zG == zS)
   }

@@ -1,7 +1,6 @@
 package store4s
 
 import com.google.cloud.datastore.{Datastore => _, _}
-import com.google.datastore.v1
 import java.sql.Timestamp
 import magnolia._
 import scala.jdk.CollectionConverters._
@@ -58,7 +57,6 @@ object ValueDecoder {
 
 trait EntityDecoder[T] extends ValueDecoder[T] {
   def decodeEntity(e: FullEntity[_]): Either[Throwable, T]
-  def decodeV1Entity(e: v1.Entity): Either[Throwable, T]
 }
 
 object EntityDecoder {
@@ -81,10 +79,6 @@ object EntityDecoder {
           }
           .left
           .map(errs => DecodeException(errs))
-      }
-
-      def decodeV1Entity(e: v1.Entity) = {
-        decodeEntity(FullEntity.fromPb(e))
       }
 
       def decode(v: Value[_]) = {

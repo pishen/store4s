@@ -2,7 +2,6 @@ package store4s
 
 import com.google.cloud.Timestamp
 import com.google.cloud.datastore.{Datastore => _, _}
-import com.google.datastore.v1
 import magnolia._
 import scala.jdk.CollectionConverters._
 import scala.language.experimental.macros
@@ -82,80 +81,4 @@ object EntityEncoder {
     }
 
   implicit def gen[T]: EntityEncoder[T] = macro Magnolia.gen[T]
-
-  // Datastore V1
-  def toV1Key(key: IncompleteKey): v1.Key = {
-    val par1 = v1.PartitionId
-      .newBuilder()
-      .setProjectId(key.getProjectId())
-    val par2 = Option(key.getNamespace())
-      .map(namespace => par1.setNamespaceId(namespace))
-      .getOrElse(par1)
-    val path1 = v1.Key.PathElement
-      .newBuilder()
-      .setKind(key.getKind())
-    val path2 = key match {
-      case k: Key if k.hasId()   => path1.setId(k.getId())
-      case k: Key if k.hasName() => path1.setName(k.getName())
-      case _                     => path1
-    }
-    v1.Key
-      .newBuilder()
-      .setPartitionId(par2)
-      .addPath(path2)
-      .build()
-  }
-
-  def toV1Value(value: Value[_]): v1.Value = {
-    import com.google.protobuf.ByteString
-    import com.google.`type`.LatLng
-    val vb = v1.Value.newBuilder()
-    value match {
-      case v: BlobValue =>
-        vb.setBlobValue(ByteString.copyFrom(v.get().toByteArray())).build()
-      case v: BooleanValue => vb.setBooleanValue(v.get()).build()
-      case v: DoubleValue  => vb.setDoubleValue(v.get()).build()
-      case v: EntityValue =>
-        vb.setEntityValue(EntityEncoder.toV1Entity(v.get())).build()
-      case v: KeyValue => vb.setKeyValue(toV1Key(v.get())).build()
-      case v: LatLngValue =>
-        val p = v.get()
-        vb.setGeoPointValue(
-          LatLng
-            .newBuilder()
-            .setLatitude(p.getLatitude())
-            .setLongitude(p.getLongitude())
-        ).build()
-      case v: ListValue =>
-        vb.setArrayValue(
-          v1.ArrayValue
-            .newBuilder()
-            .addAllValues(v.get().asScala.map(toV1Value).asJava)
-        ).build()
-      case v: LongValue => vb.setIntegerValue(v.get()).build()
-      case _: NullValue =>
-        vb.setNullValue(com.google.protobuf.NullValue.NULL_VALUE).build()
-      case v: StringValue    => vb.setStringValue(v.get()).build()
-      case v: TimestampValue => vb.setTimestampValue(v.get().toProto()).build()
-      case v: RawValue       => v.get()
-    }
-  }
-
-  def toV1Entity(entity: FullEntity[_]): v1.Entity = {
-    val keyOpt = Option(entity.getKey())
-      .collect { case k: IncompleteKey => k }
-      .map(toV1Key)
-    val eb = keyOpt match {
-      case Some(key) => v1.Entity.newBuilder().setKey(key)
-      case None      => v1.Entity.newBuilder()
-    }
-    entity
-      .getProperties()
-      .asScala
-      .toSeq
-      .foldLeft(eb) { case (eb, (name, value)) =>
-        eb.putProperties(name, toV1Value(value))
-      }
-      .build()
-  }
 }

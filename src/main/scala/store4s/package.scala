@@ -39,10 +39,6 @@ package object store4s {
     def asEntity(keyName: String) = enc.encodeEntity(t, keyName)
   }
 
-  implicit class EntityWrapper(entity: FullEntity[_]) {
-    def toV1 = EntityEncoder.toV1Entity(entity)
-  }
-
   implicit class FilterWrapper(left: Filter) {
     def &&(right: Filter): Filter = CompositeFilter.and(left, right)
   }
