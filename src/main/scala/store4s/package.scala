@@ -1,3 +1,4 @@
+import com.google.cloud.datastore.Entity
 import com.google.cloud.datastore.EntityQuery
 import com.google.cloud.datastore.FullEntity
 import com.google.cloud.datastore.KeyFactory
@@ -7,22 +8,6 @@ import scala.language.implicitConversions
 import scala.reflect._
 
 package object store4s {
-  case class KeyContext(project: String, namespace: Option[String]) {
-    def newKeyFactory(kind: String) = {
-      namespace
-        .map(new KeyFactory(project, _))
-        .getOrElse(new KeyFactory(project))
-        .setKind(kind)
-    }
-    // use EntityDecoder to force user filling T
-    def newKey[T: ClassTag: EntityDecoder](name: String) = {
-      newKeyFactory(classTag[T].runtimeClass.getSimpleName).newKey(name)
-    }
-    def newKey[T: ClassTag: EntityDecoder](id: Long) = {
-      newKeyFactory(classTag[T].runtimeClass.getSimpleName).newKey(id)
-    }
-  }
-
   implicit class QueryBuilderWrapper(eb: EntityQuery.Builder) {
     def applyIf(
         cond: Boolean
@@ -31,12 +16,23 @@ package object store4s {
     }
   }
 
-  implicit class EntityEncoderOps[T](t: T)(implicit
-      enc: EntityEncoder[T],
-      keyCtx: KeyContext
+  implicit class EntityEncoderOps[A: ClassTag](obj: A)(implicit
+      encoder: EntityEncoder[A],
+      datastore: Datastore
   ) {
-    def asEntity = enc.encodeEntity(t)
-    def asEntity(keyName: String) = enc.encodeEntity(t, keyName)
+    val keyFactory = datastore.keyFactory[A]
+
+    def asEntity = encoder
+      .encodeEntity(obj, FullEntity.newBuilder(keyFactory.newKey()))
+      .build()
+
+    def asEntity(name: String) = encoder
+      .encodeEntity(obj, Entity.newBuilder(keyFactory.newKey(name)))
+      .build()
+
+    def asEntity(id: Long) = encoder
+      .encodeEntity(obj, Entity.newBuilder(keyFactory.newKey(id)))
+      .build()
   }
 
   implicit class FilterWrapper(left: Filter) {

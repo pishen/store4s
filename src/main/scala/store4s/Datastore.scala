@@ -6,9 +6,13 @@ import com.google.cloud.datastore.Entity
 import com.google.cloud.datastore.FullEntity
 import com.google.cloud.datastore.Key
 import com.google.cloud.datastore.ReadOption
+import scala.reflect._
 
 case class Datastore(underlying: GDatastore) {
-  def keyFactory = underlying.newKeyFactory()
+  def keyFactory[A: ClassTag] = underlying
+    .newKeyFactory()
+    .setKind(classTag[A].runtimeClass.getSimpleName.split('$').head)
+
   def add(entity: FullEntity[_]) = underlying.add(entity)
   def put(entity: FullEntity[_]) = underlying.put(entity)
   def get(key: Key) = Option(

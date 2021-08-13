@@ -6,8 +6,8 @@ import com.google.cloud.datastore.KeyFactory
 import org.scalatest.flatspec.AnyFlatSpec
 
 class EncoderSpec extends AnyFlatSpec {
-  def keyFactory = new KeyFactory("zombie-land-saga")
-  implicit val keyCtx = KeyContext("zombie-land-saga", None)
+  implicit val datastore = Datastore.defaultInstance
+  def keyFactory = datastore.underlying.newKeyFactory()
 
   "An EntityEncoder" should "generate same output as Google Cloud Java" in {
     val zG = Entity

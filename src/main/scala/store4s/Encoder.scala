@@ -2,9 +2,9 @@ package store4s
 
 import com.google.cloud.Timestamp
 import com.google.cloud.datastore.{Datastore => _, _}
-import magnolia._
 import scala.jdk.CollectionConverters._
-import scala.language.experimental.macros
+import shapeless._
+import shapeless.labelled._
 
 trait ValueEncoder[T] {
   def encode(t: T): Value[_]
@@ -20,6 +20,10 @@ object ValueEncoder {
   implicit val blobEncoder = create(BlobValue.of)
   implicit val booleanEncoder = create(BooleanValue.of)
   implicit val doubleEncoder = create(DoubleValue.of)
+  implicit def entityEncoder[T](implicit encoder: EntityEncoder[T]) =
+    create[T] { obj =>
+      EntityValue.of(encoder.encodeEntity(obj, FullEntity.newBuilder()).build())
+    }
   implicit val keyEncoder = create(KeyValue.of)
   implicit val latLngEncoder = create(LatLngValue.of)
   implicit def seqEncoder[T](implicit ve: ValueEncoder[T]) =
@@ -36,49 +40,40 @@ object ValueEncoder {
     create((t: java.sql.Timestamp) => TimestampValue.of(Timestamp.of(t)))
 }
 
-trait EntityEncoder[T] extends ValueEncoder[T] {
-  def encodeEntity(t: T)(implicit ctx: KeyContext): FullEntity[IncompleteKey]
-
-  def encodeEntity(t: T, keyName: String)(implicit
-      ctx: KeyContext
-  ): Entity
-
-  def encodeEntity(t: T, id: Long)(implicit ctx: KeyContext): Entity
+trait EntityEncoder[A] {
+  def encodeEntity[B <: BaseEntity.Builder[_, B]](obj: A, eb: B): B
 }
 
 object EntityEncoder {
-  type Typeclass[T] = ValueEncoder[T]
+  def apply[A](implicit enc: EntityEncoder[A]) = enc
 
-  def apply[T](implicit enc: EntityEncoder[T]) = enc
+  implicit val hnilEncoder = new EntityEncoder[HNil] {
+    def encodeEntity[B <: BaseEntity.Builder[_, B]](obj: HNil, eb: B): B = eb
+  }
 
-  def combine[T](ctx: CaseClass[ValueEncoder, T]): EntityEncoder[T] =
-    new EntityEncoder[T] {
-      def fold[B <: BaseEntity.Builder[_, B]](t: T, eb: B) = {
-        ctx.parameters
-          .foldLeft(eb) { (eb, p) =>
-            eb.set(p.label, p.typeclass.encode(p.dereference(t)))
-          }
-      }
-
-      def encodeEntity(t: T)(implicit keyCtx: KeyContext) = {
-        val key = keyCtx.newKeyFactory(ctx.typeName.short).newKey()
-        fold(t, FullEntity.newBuilder(key)).build()
-      }
-
-      def encodeEntity(t: T, keyName: String)(implicit keyCtx: KeyContext) = {
-        val key = keyCtx.newKeyFactory(ctx.typeName.short).newKey(keyName)
-        fold(t, Entity.newBuilder(key)).build()
-      }
-
-      def encodeEntity(t: T, id: Long)(implicit keyCtx: KeyContext) = {
-        val key = keyCtx.newKeyFactory(ctx.typeName.short).newKey(id)
-        fold(t, Entity.newBuilder(key)).build()
-      }
-
-      def encode(t: T) = {
-        EntityValue.of(fold(t, FullEntity.newBuilder()).build())
-      }
+  implicit def hlistEncoder[K <: Symbol, H, T <: HList](implicit
+      witness: Witness.Aux[K],
+      hEncoder: ValueEncoder[H],
+      tEncoder: EntityEncoder[T]
+  ) = new EntityEncoder[FieldType[K, H] :: T] {
+    def encodeEntity[B <: BaseEntity.Builder[_, B]](
+        obj: FieldType[K, H] :: T,
+        eb: B
+    ): B = {
+      val fieldName = witness.value.name
+      tEncoder.encodeEntity(
+        obj.tail,
+        eb.set(fieldName, hEncoder.encode(obj.head))
+      )
     }
+  }
 
-  implicit def gen[T]: EntityEncoder[T] = macro Magnolia.gen[T]
+  implicit def genericEncoder[A, R](implicit
+      generic: LabelledGeneric.Aux[A, R],
+      encoder: EntityEncoder[R]
+  ) = new EntityEncoder[A] {
+    def encodeEntity[B <: BaseEntity.Builder[_, B]](obj: A, eb: B): B = {
+      encoder.encodeEntity(generic.to(obj), eb)
+    }
+  }
 }

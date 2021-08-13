@@ -2,10 +2,10 @@ package store4s
 
 import com.google.cloud.datastore.{Datastore => _, _}
 import java.sql.Timestamp
-import magnolia._
 import scala.jdk.CollectionConverters._
-import scala.language.experimental.macros
 import scala.util.Try
+import shapeless._
+import shapeless.labelled._
 
 trait ValueDecoder[T] {
   def decode(v: Value[_]): Either[Throwable, T]
@@ -21,6 +21,11 @@ object ValueDecoder {
   implicit val blobDecoder = create[BlobValue, Blob](_.get)
   implicit val booleanDecoder = create[BooleanValue, Boolean](_.get)
   implicit val doubleDecoder = create[DoubleValue, Double](_.get)
+  implicit def entityDecoder[T](implicit decoder: EntityDecoder[T]) =
+    new ValueDecoder[T] {
+      def decode(v: Value[_]) = Try(v.asInstanceOf[EntityValue]).toEither
+        .flatMap(v => decoder.decodeEntity(v.get()))
+    }
   implicit val keyDecoder = create[KeyValue, Key](_.get)
   implicit val latLngDecoder = create[LatLngValue, LatLng](_.get)
   implicit def seqDecoder[T](implicit vd: ValueDecoder[T]) =
@@ -55,38 +60,39 @@ object ValueDecoder {
     create[TimestampValue, Timestamp](_.get.toSqlTimestamp)
 }
 
-trait EntityDecoder[T] extends ValueDecoder[T] {
-  def decodeEntity(e: FullEntity[_]): Either[Throwable, T]
+trait EntityDecoder[A] {
+  def decodeEntity(e: FullEntity[_]): Either[Throwable, A]
 }
 
 object EntityDecoder {
-  type Typeclass[T] = ValueDecoder[T]
+  def apply[A](implicit dec: EntityDecoder[A]) = dec
 
-  case class DecodeException(errs: List[Throwable]) extends Exception
-
-  def apply[T](implicit dec: EntityDecoder[T]) = dec
-
-  def combine[T](ctx: CaseClass[ValueDecoder, T]): EntityDecoder[T] =
-    new EntityDecoder[T] {
-      def decodeEntity(e: FullEntity[_]) = {
-        val valueMap = e.getProperties().asScala
-        ctx
-          .constructEither { p =>
-            valueMap
-              .get(p.label)
-              .toRight[Throwable](new NoSuchElementException(p.label))
-              .flatMap(v => p.typeclass.decode(v))
-          }
-          .left
-          .map(errs => DecodeException(errs))
-      }
-
-      def decode(v: Value[_]) = {
-        Try(v.asInstanceOf[EntityValue]).toEither.flatMap(ev =>
-          decodeEntity(ev.get)
-        )
-      }
+  def create[A](f: FullEntity[_] => Either[Throwable, A]) =
+    new EntityDecoder[A] {
+      def decodeEntity(e: FullEntity[_]) = f(e)
     }
 
-  implicit def gen[T]: EntityDecoder[T] = macro Magnolia.gen[T]
+  implicit val hnilDecoder = create[HNil](_ => Right(HNil))
+
+  implicit def hlistDecoder[K <: Symbol, H, T <: HList](implicit
+      witness: Witness.Aux[K],
+      hDecoder: ValueDecoder[H],
+      tDecoder: EntityDecoder[T]
+  ) = create[FieldType[K, H] :: T] { e =>
+    val fieldName = witness.value.name
+    for {
+      v <- Try(e.getValue[Value[_]](fieldName)).toEither
+      h <- hDecoder.decode(v)
+      t <- tDecoder.decodeEntity(e)
+    } yield {
+      field[K](h) :: t
+    }
+  }
+
+  implicit def genericDecoder[A, R](implicit
+      generic: LabelledGeneric.Aux[A, R],
+      decoder: EntityDecoder[R]
+  ) = create[A] { e =>
+    decoder.decodeEntity(e).map(generic.from)
+  }
 }

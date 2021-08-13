@@ -14,22 +14,16 @@ import store4s._
 
 case class Zombie(number: Int, name: String, girl: Boolean)
 
-implicit val keyCtx = KeyContext("my-project-id", None)
+implicit val datastore = Datastore.defaultInstance
 
 val z1 = Zombie(1, "Sakura Minamoto", true).asEntity("heroine")
+val z2: Entity = Zombie(2, "Saki Nikaido", true).asEntity(2)
 val z6 = Zombie(6, "Lily Hoshikawa", false).asEntity
 ```
 Currently supported data types are `Blob`, `Boolean`, `Double`, `Key`, `LatLng`, `Seq`, `Option`, `Int` (cast to `Long`), `Long`, `String`, `Timestamp`, and nested case classes.
 
-One can also generate the v1 `Entity` using `toV1`:
-```scala
-val z2: Entity = Zombie(2, "Saki Nikaido", true).asEntity("leader")
-val z2v1: com.google.datastore.v1.Entity = z2.toV1
-```
-
 To insert, upsert, or update the entity into datastore:
 ```scala
-val datastore = Datastore.defaultInstance
 datastore.add(z6)
 datastore.put(z1)
 datastore.update(z2)
@@ -41,21 +35,15 @@ Get an entity from datastore:
 import store4s._
 case class Zombie(number: Int, name: String, girl: Boolean)
 
-val keyCtx = KeyContext("my-project-id", None)
 val datastore = Datastore.defaultInstance
 
-val key1 = keyCtx.newKey[Zombie]("heroine")
+val key1 = datastore.keyFactory[Zombie].newKey("heroine")
 val e1: Option[Entity] = datastore.get(key1)
 ```
 
 Parse an entity into case class using `decodeEntity`:
 ```scala
 EntityDecoder[Zombie].decodeEntity(e1.get)
-```
-
-The v1 `Entity` is also supported using `decodeV1Entity`:
-```scala
-EntityDecoder[Zombie].decodeV1Entity(z2v1)
 ```
 
 ## Querying

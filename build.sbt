@@ -7,7 +7,7 @@ scalaVersion := "2.13.5"
 crossScalaVersions := Seq("2.13.5", "2.12.13")
 
 libraryDependencies ++= Seq(
-  "com.propensive" %% "magnolia" % "0.16.0",
+  "com.chuusai" %% "shapeless" % "2.3.7",
   "com.google.cloud" % "google-cloud-datastore" % "1.105.9",
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.3",
   "org.scala-lang" % "scala-reflect" % scalaVersion.value % Provided,
