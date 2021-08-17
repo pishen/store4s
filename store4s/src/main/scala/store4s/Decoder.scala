@@ -1,5 +1,6 @@
 package store4s
 
+import cats.implicits._
 import com.google.cloud.datastore.{Datastore => _, _}
 import java.sql.Timestamp
 import scala.jdk.CollectionConverters._
@@ -30,20 +31,8 @@ object ValueDecoder {
   implicit val latLngDecoder = create[LatLngValue, LatLng](_.get)
   implicit def seqDecoder[T](implicit vd: ValueDecoder[T]) =
     new ValueDecoder[Seq[T]] {
-      //TODO: can be simplified by cats Traverse
       def decode(v: Value[_]) = Try(v.asInstanceOf[ListValue]).toEither
-        .flatMap { lv =>
-          lv.get.asScala.toSeq
-            .foldLeft[Either[Throwable, Seq[T]]](Right(Seq.empty[T])) {
-              (either, v) =>
-                for {
-                  seq <- either
-                  t <- vd.decode(v)
-                } yield {
-                  seq :+ t
-                }
-            }
-        }
+        .flatMap(_.get.asScala.toSeq.map(vd.decode).sequence)
     }
   implicit def optionDecoder[T](implicit vd: ValueDecoder[T]) =
     new ValueDecoder[Option[T]] {

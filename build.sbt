@@ -14,6 +14,7 @@ val commonSettings = Seq(
     "com.chuusai" %% "shapeless" % "2.3.7",
     "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.3",
     "org.scala-lang" % "scala-reflect" % scalaVersion.value % Provided,
+    "org.typelevel" %% "cats-core" % "2.6.1",
     "org.scalatest" %% "scalatest" % "3.2.7" % Test
   )
 )
