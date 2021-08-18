@@ -5,7 +5,7 @@ import com.google.cloud.datastore.KeyFactory
 import com.google.cloud.datastore.StructuredQuery.CompositeFilter
 import com.google.cloud.datastore.StructuredQuery.Filter
 import scala.language.implicitConversions
-import scala.reflect._
+import scala.reflect.runtime.universe._
 
 package object store4s {
   implicit class QueryBuilderWrapper(eb: EntityQuery.Builder) {
@@ -16,7 +16,7 @@ package object store4s {
     }
   }
 
-  implicit class EntityEncoderOps[A: ClassTag](obj: A)(implicit
+  implicit class EntityEncoderOps[A: WeakTypeTag](obj: A)(implicit
       encoder: EntityEncoder[A],
       datastore: Datastore
   ) {
