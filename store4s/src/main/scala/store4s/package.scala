@@ -16,22 +16,23 @@ package object store4s {
     }
   }
 
-  implicit class EntityEncoderOps[A: WeakTypeTag](obj: A)(implicit
-      encoder: EntityEncoder[A],
-      datastore: Datastore
-  ) {
-    val keyFactory = datastore.keyFactory[A]
-
-    def asEntity = encoder
-      .encodeEntity(obj, FullEntity.newBuilder(keyFactory.newKey()))
+  implicit class EntityEncoderOps[A: WeakTypeTag](obj: A) {
+    def asEntity(implicit encoder: EntityEncoder[A], ds: Datastore) = encoder
+      .encodeEntity(obj, FullEntity.newBuilder(ds.keyFactory[A].newKey()))
       .build()
 
-    def asEntity(name: String) = encoder
-      .encodeEntity(obj, Entity.newBuilder(keyFactory.newKey(name)))
+    def asEntity(name: String)(implicit
+        encoder: EntityEncoder[A],
+        ds: Datastore
+    ) = encoder
+      .encodeEntity(obj, Entity.newBuilder(ds.keyFactory[A].newKey(name)))
       .build()
 
-    def asEntity(id: Long) = encoder
-      .encodeEntity(obj, Entity.newBuilder(keyFactory.newKey(id)))
+    def asEntity(id: Long)(implicit
+        encoder: EntityEncoder[A],
+        ds: Datastore
+    ) = encoder
+      .encodeEntity(obj, Entity.newBuilder(ds.keyFactory[A].newKey(id)))
       .build()
   }
 

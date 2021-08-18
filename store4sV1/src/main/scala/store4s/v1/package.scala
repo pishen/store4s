@@ -9,16 +9,15 @@ import scala.language.implicitConversions
 import scala.reflect.runtime.universe._
 
 package object v1 {
-  implicit class EntityEncoderOps[A: WeakTypeTag](obj: A)(implicit
-      encoder: EntityEncoder[A],
-      datastore: Datastore
-  ) {
+  implicit class EntityEncoderOps[A: WeakTypeTag](obj: A) {
     val typeName = weakTypeOf[A].typeSymbol.name.toString()
 
-    def entityBuilder(f: Key.PathElement.Builder => Key.PathElement.Builder) = {
+    def entityBuilder(
+        f: Key.PathElement.Builder => Key.PathElement.Builder
+    )(implicit ds: Datastore) = {
       val partitionId = Some(PartitionId.newBuilder())
-        .map(_.setProjectId(datastore.projectId))
-        .map(eb => datastore.namespace.map(eb.setNamespaceId).getOrElse(eb))
+        .map(_.setProjectId(ds.projectId))
+        .map(eb => ds.namespace.map(eb.setNamespaceId).getOrElse(eb))
         .get
         .build()
       val pathBuilder = Key.PathElement.newBuilder().setKind(typeName)
@@ -31,11 +30,17 @@ package object v1 {
     }
 
     // not providing incomplete key builder since dataflow doesn't support it
-    def asEntity(name: String) = encoder
+    def asEntity(name: String)(implicit
+        encoder: EntityEncoder[A],
+        ds: Datastore
+    ) = encoder
       .encodeEntity(obj, entityBuilder(_.setName(name)))
       .build()
 
-    def asEntity(id: Long) = encoder
+    def asEntity(id: Long)(implicit
+        encoder: EntityEncoder[A],
+        ds: Datastore
+    ) = encoder
       .encodeEntity(obj, entityBuilder(_.setId(id)))
       .build()
   }
