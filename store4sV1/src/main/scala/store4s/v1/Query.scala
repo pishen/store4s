@@ -1,16 +1,21 @@
 package store4s.v1
 
+import cats.Id
+import cats.implicits._
 import com.google.datastore.v1.{Query => GQuery}
+import com.google.datastore.v1.CompositeFilter
 import com.google.datastore.v1.Filter
+import com.google.datastore.v1.KindExpression
 import com.google.datastore.v1.PropertyFilter
 import com.google.datastore.v1.PropertyFilter.Operator
 import com.google.datastore.v1.PropertyOrder
 import com.google.datastore.v1.PropertyOrder.Direction
 import com.google.datastore.v1.PropertyReference
 import com.google.protobuf.ByteString
+import com.google.protobuf.Int32Value
+import scala.jdk.CollectionConverters._
 import scala.language.experimental.macros
 import scala.reflect.macros.whitebox.Context
-import com.google.datastore.v1.KindExpression
 
 trait Selector
 
@@ -23,10 +28,35 @@ case class Query[S <: Selector](
     start: Option[ByteString] = None,
     end: Option[ByteString] = None
 ) {
-  def build() = Some(GQuery.newBuilder())
+  def build() = GQuery
+    .newBuilder()
+    .pure[Id]
     .map(_.addKind(KindExpression.newBuilder().setName(kind)))
-    .get
+    .map(b =>
+      if (filters.nonEmpty)
+        b.setFilter(
+          Filter
+            .newBuilder()
+            .setCompositeFilter(
+              CompositeFilter
+                .newBuilder()
+                .setOp(CompositeFilter.Operator.AND)
+                .addAllFilters(filters.asJava)
+            )
+        )
+      else b
+    )
+    .map(b => if (orders.nonEmpty) b.addAllOrder(orders.asJava) else b)
+    .map(b => limit.fold(b)(i => b.setLimit(Int32Value.of(i))))
+    .map(b => start.fold(b)(c => b.setStartCursor(c)))
+    .map(b => end.fold(b)(c => b.setEndCursor(c)))
     .build()
+  def filter(f: S => Filter) = this.copy(filters = filters :+ f(selector))
+  def sortBy(fs: S => PropertyOrder*) =
+    this.copy(orders = fs.map(f => f(selector)))
+  def take(n: Int) = this.copy(limit = Some(n))
+  def startFrom(cursor: ByteString) = this.copy(start = Some(cursor))
+  def endAt(cursor: ByteString) = this.copy(end = Some(cursor))
 }
 
 object Query {
@@ -47,7 +77,8 @@ object Query {
     def >=(t: T): Filter = createFilter(Operator.GREATER_THAN_OR_EQUAL, t)
     def <=(t: T): Filter = createFilter(Operator.LESS_THAN_OR_EQUAL, t)
 
-    def createOrder(direction: Direction) = PropertyOrder.newBuilder()
+    def createOrder(direction: Direction) = PropertyOrder
+      .newBuilder()
       .setDirection(direction)
       .setProperty(PropertyReference.newBuilder().setName(name))
       .build()
