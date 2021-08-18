@@ -1,5 +1,7 @@
 package store4s
 
+import cats.Id
+import cats.implicits._
 import com.google.cloud.datastore.{Query => GQuery}
 import com.google.cloud.datastore.Cursor
 import com.google.cloud.datastore.QueryResults
@@ -22,15 +24,17 @@ case class Query[S <: Selector](
     start: Option[Cursor] = None,
     end: Option[Cursor] = None
 ) {
-  def builder = {
+  def build() = {
     GQuery
       .newEntityQueryBuilder()
       .setKind(kind)
-      .applyIf(filters.nonEmpty)(_.setFilter(filters.reduce(_ && _)))
-      .applyIf(orders.nonEmpty)(_.setOrderBy(orders.head, orders.tail: _*))
-      .applyIf(limit.nonEmpty)(_.setLimit(limit.get))
-      .applyIf(start.nonEmpty)(_.setStartCursor(start.get))
-      .applyIf(end.nonEmpty)(_.setEndCursor(end.get))
+      .pure[Id]
+      .map(b => if (filters.nonEmpty) b.setFilter(filters.reduce(_ && _)) else b)
+      .map(b => if (orders.nonEmpty) b.setOrderBy(orders.head, orders.tail: _*) else b)
+      .map(b => limit.fold(b)(i => b.setLimit(i)))
+      .map(b => start.fold(b)(c => b.setStartCursor(c)))
+      .map(b => end.fold(b)(c => b.setEndCursor(c)))
+      .build()
   }
   def filter(f: S => Filter) = this.copy(filters = filters :+ f(selector))
   def sortBy(fs: S => OrderBy*) = this.copy(orders = fs.map(f => f(selector)))
@@ -39,7 +43,7 @@ case class Query[S <: Selector](
   def endAt(cursor: Cursor) = this.copy(end = Some(cursor))
   def run(implicit datastore: Datastore) = {
     val res = datastore.underlying.run(
-      builder.build(),
+      build(),
       Seq.empty[ReadOption]: _*
     )
     Query.Result(res.asScala.toList, res.getCursorAfter())

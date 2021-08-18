@@ -8,14 +8,6 @@ import scala.language.implicitConversions
 import scala.reflect.runtime.universe._
 
 package object store4s {
-  implicit class QueryBuilderWrapper(eb: EntityQuery.Builder) {
-    def applyIf(
-        cond: Boolean
-    )(f: EntityQuery.Builder => EntityQuery.Builder) = {
-      if (cond) f(eb) else eb
-    }
-  }
-
   implicit class EntityEncoderOps[A: WeakTypeTag](obj: A) {
     def asEntity(implicit encoder: EntityEncoder[A], ds: Datastore) = encoder
       .encodeEntity(obj, FullEntity.newBuilder(ds.keyFactory[A].newKey()))
