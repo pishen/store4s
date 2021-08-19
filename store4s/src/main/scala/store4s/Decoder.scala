@@ -1,8 +1,8 @@
 package store4s
 
 import cats.implicits._
+import com.google.cloud.Timestamp
 import com.google.cloud.datastore.{Datastore => _, _}
-import java.sql.Timestamp
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 import shapeless._
@@ -45,8 +45,7 @@ object ValueDecoder {
   implicit val intDecoder = create[LongValue, Int](_.get.toInt)
   implicit val longDecoder = create[LongValue, Long](_.get)
   implicit val stringDecoder = create[StringValue, String](_.get)
-  implicit val timestampDecoder =
-    create[TimestampValue, Timestamp](_.get.toSqlTimestamp)
+  implicit val timestampDecoder = create[TimestampValue, Timestamp](_.get)
 }
 
 trait EntityDecoder[A] {

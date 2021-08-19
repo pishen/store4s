@@ -36,8 +36,7 @@ object ValueEncoder {
   implicit val intEncoder = create((i: Int) => LongValue.of(i.toLong))
   implicit val longEncoder = create(LongValue.of)
   implicit val stringEncoder = create(StringValue.of)
-  implicit val timestampEncoder =
-    create((t: java.sql.Timestamp) => TimestampValue.of(Timestamp.of(t)))
+  implicit val timestampEncoder = create(TimestampValue.of)
 }
 
 trait EntityEncoder[A] {
