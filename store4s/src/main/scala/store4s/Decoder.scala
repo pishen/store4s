@@ -33,8 +33,9 @@ object ValueDecoder {
   implicit val latLngDecoder = create[LatLngValue, LatLng](_.get)
   implicit def seqDecoder[T](implicit vd: ValueDecoder[T]) =
     new ValueDecoder[Seq[T]] {
-      def decode(v: Value[_]) = Try(v.asInstanceOf[ListValue]).toEither
-        .flatMap(_.get.asScala.toSeq.map(vd.decode).sequence)
+      def decode(v: Value[_]): Either[Throwable, Seq[T]] =
+        Try(v.asInstanceOf[ListValue]).toEither
+          .flatMap(_.get.asScala.toList.traverse(vd.decode))
     }
   implicit def optionDecoder[T](implicit vd: ValueDecoder[T]) =
     new ValueDecoder[Option[T]] {

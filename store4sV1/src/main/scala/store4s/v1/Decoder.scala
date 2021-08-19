@@ -40,8 +40,8 @@ object ValueDecoder {
     create(_.hasGeoPointValue())(_.getGeoPointValue())
   implicit def seqDecoder[T](implicit vd: ValueDecoder[T]) =
     new ValueDecoder[Seq[T]] {
-      def decode(v: Value) = if (v.hasArrayValue()) {
-        v.getArrayValue().getValuesList().asScala.toSeq.map(vd.decode).sequence
+      def decode(v: Value): Either[Throwable, Seq[T]] = if (v.hasArrayValue()) {
+        v.getArrayValue().getValuesList().asScala.toList.traverse(vd.decode)
       } else {
         Left(new Exception("Type is not matched: " + v))
       }

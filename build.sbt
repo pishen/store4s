@@ -3,11 +3,18 @@ name := "store4s"
 ThisBuild / version := "0.2.0-SNAPSHOT"
 ThisBuild / scalaVersion := "2.13.5"
 ThisBuild / crossScalaVersions := Seq("2.13.5", "2.12.13")
-ThisBuild / scalacOptions ++= Seq(
-  "-feature",
-  "-deprecation",
-  "-language:higherKinds"
-)
+
+ThisBuild / scalacOptions ++= {
+  val common = Seq(
+    "-feature",
+    "-deprecation",
+    "-language:higherKinds"
+  )
+  CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((2, 12)) => common :+ "-Ypartial-unification" // for cats
+    case _             => common
+  }
+}
 
 val commonSettings = Seq(
   libraryDependencies ++= Seq(
