@@ -20,6 +20,8 @@ object ValueDecoder {
   }
 
   implicit val blobDecoder = create[BlobValue, Blob](_.get)
+  implicit val bytesDecoder =
+    create[BlobValue, Array[Byte]](_.get().toByteArray())
   implicit val booleanDecoder = create[BooleanValue, Boolean](_.get)
   implicit val doubleDecoder = create[DoubleValue, Double](_.get)
   implicit def entityDecoder[T](implicit decoder: EntityDecoder[T]) =

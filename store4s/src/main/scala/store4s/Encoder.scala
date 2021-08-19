@@ -18,6 +18,8 @@ object ValueEncoder {
   }
 
   implicit val blobEncoder = create(BlobValue.of)
+  implicit val bytesEncoder =
+    create[Array[Byte]](bytes => BlobValue.of(Blob.copyFrom(bytes)))
   implicit val booleanEncoder = create(BooleanValue.of)
   implicit val doubleEncoder = create(DoubleValue.of)
   implicit def entityEncoder[T](implicit encoder: EntityEncoder[T]) =
