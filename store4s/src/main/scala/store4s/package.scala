@@ -28,6 +28,10 @@ package object store4s {
       .build()
   }
 
+  def decodeEntity[T](e: FullEntity[_])(implicit decoder: EntityDecoder[T]) = {
+    decoder.decodeEntity(e)
+  }
+
   implicit class FilterWrapper(left: Filter) {
     def &&(right: Filter): Filter = CompositeFilter.and(left, right)
   }

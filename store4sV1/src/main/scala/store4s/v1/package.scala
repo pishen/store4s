@@ -45,6 +45,10 @@ package object v1 {
       .build()
   }
 
+  def decodeEntity[T](e: Entity)(implicit decoder: EntityDecoder[T]) = {
+    decoder.decodeEntity(e)
+  }
+
   implicit class FilterWrapper(left: Filter) {
     def &&(right: Filter): Filter = Filter
       .newBuilder()
