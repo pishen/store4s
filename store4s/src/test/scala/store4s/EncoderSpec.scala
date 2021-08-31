@@ -3,11 +3,17 @@ package store4s
 import com.google.cloud.datastore.Entity
 import com.google.cloud.datastore.FullEntity
 import com.google.cloud.datastore.KeyFactory
+import com.google.cloud.datastore.{Datastore => GDatastore}
+import org.scalamock.scalatest.MockFactory
+import org.scalatest.OneInstancePerTest
 import org.scalatest.flatspec.AnyFlatSpec
 
-class EncoderSpec extends AnyFlatSpec {
-  implicit val datastore = Datastore.defaultInstance
-  def keyFactory = datastore.underlying.newKeyFactory()
+class EncoderSpec extends AnyFlatSpec with OneInstancePerTest with MockFactory {
+  val mockGDatastore = mock[GDatastore]
+  val keyFactory = new KeyFactory("store4s")
+  (mockGDatastore.newKeyFactory _).expects().returning(keyFactory)
+
+  implicit val datastore = Datastore(mockGDatastore)
 
   "An EntityEncoder" should "generate same output as Google Cloud Java" in {
     val zG = Entity
