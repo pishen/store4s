@@ -28,29 +28,31 @@ case class Query[S <: Selector](
     start: Option[ByteString] = None,
     end: Option[ByteString] = None
 ) {
-  def build() = GQuery
-    .newBuilder()
-    .pure[Id]
-    .map(_.addKind(KindExpression.newBuilder().setName(kind)))
-    .map(b =>
-      if (filters.nonEmpty)
-        b.setFilter(
-          Filter
-            .newBuilder()
-            .setCompositeFilter(
-              CompositeFilter
-                .newBuilder()
-                .setOp(CompositeFilter.Operator.AND)
-                .addAllFilters(filters.asJava)
-            )
-        )
-      else b
-    )
-    .map(b => if (orders.nonEmpty) b.addAllOrder(orders.asJava) else b)
-    .map(b => limit.fold(b)(i => b.setLimit(Int32Value.of(i))))
-    .map(b => start.fold(b)(c => b.setStartCursor(c)))
-    .map(b => end.fold(b)(c => b.setEndCursor(c)))
-    .build()
+  def builder() = {
+    GQuery
+      .newBuilder()
+      .pure[Id]
+      .map(_.addKind(KindExpression.newBuilder().setName(kind)))
+      .map(b =>
+        if (filters.nonEmpty)
+          b.setFilter(
+            Filter
+              .newBuilder()
+              .setCompositeFilter(
+                CompositeFilter
+                  .newBuilder()
+                  .setOp(CompositeFilter.Operator.AND)
+                  .addAllFilters(filters.asJava)
+              )
+          )
+        else b
+      )
+      .map(b => if (orders.nonEmpty) b.addAllOrder(orders.asJava) else b)
+      .map(b => limit.fold(b)(i => b.setLimit(Int32Value.of(i))))
+      .map(b => start.fold(b)(c => b.setStartCursor(c)))
+      .map(b => end.fold(b)(c => b.setEndCursor(c)))
+  }
+  def build() = builder().build()
   def filter(f: S => Filter) = this.copy(filters = filters :+ f(selector))
   def sortBy(fs: S => PropertyOrder*) =
     this.copy(orders = fs.map(f => f(selector)))

@@ -9,7 +9,6 @@ import com.google.cloud.datastore.ReadOption
 import com.google.cloud.datastore.StructuredQuery.Filter
 import com.google.cloud.datastore.StructuredQuery.OrderBy
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter
-import scala.jdk.CollectionConverters._
 import scala.language.experimental.macros
 import scala.reflect.macros.whitebox.Context
 
@@ -24,7 +23,7 @@ case class Query[S <: Selector](
     start: Option[Cursor] = None,
     end: Option[Cursor] = None
 ) {
-  def build() = {
+  def builder() = {
     GQuery
       .newEntityQueryBuilder()
       .setKind(kind)
@@ -34,7 +33,6 @@ case class Query[S <: Selector](
       .map(b => limit.fold(b)(i => b.setLimit(i)))
       .map(b => start.fold(b)(c => b.setStartCursor(c)))
       .map(b => end.fold(b)(c => b.setEndCursor(c)))
-      .build()
   }
   def filter(f: S => Filter) = this.copy(filters = filters :+ f(selector))
   def sortBy(fs: S => OrderBy*) = this.copy(orders = fs.map(f => f(selector)))
@@ -42,11 +40,7 @@ case class Query[S <: Selector](
   def startFrom(cursor: Cursor) = this.copy(start = Some(cursor))
   def endAt(cursor: Cursor) = this.copy(end = Some(cursor))
   def run(implicit datastore: Datastore) = {
-    val res = datastore.underlying.run(
-      build(),
-      Seq.empty[ReadOption]: _*
-    )
-    Query.Result(res.asScala.toList, res.getCursorAfter())
+    datastore.underlying.run(builder().build(), Seq.empty[ReadOption]: _*)
   }
 }
 
@@ -60,7 +54,6 @@ object Query {
     def asc: OrderBy = OrderBy.asc(name)
     def desc: OrderBy = OrderBy.desc(name)
   }
-  case class Result[V](values: Seq[V], cursor: Cursor)
 
   def apply[T]: Any = macro impl[T]
 
