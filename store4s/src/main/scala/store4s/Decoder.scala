@@ -10,27 +10,31 @@ import shapeless.labelled._
 
 trait ValueDecoder[T] {
   def decode(v: Value[_]): Either[Throwable, T]
+
+  /** Return `true` for `ValueDecoder[Option[T]]` */
+  def acceptOption = false
 }
 
 object ValueDecoder {
   def apply[T](implicit dec: ValueDecoder[T]) = dec
 
-  def create[V, T](f: V => T) = new ValueDecoder[T] {
-    def decode(v: Value[_]) = Try(v.asInstanceOf[V]).toEither.map(f)
+  def create[T](f: Value[_] => T) = new ValueDecoder[T] {
+    def decode(v: Value[_]) = Try(f(v)).toEither
   }
 
-  implicit val blobDecoder = create[BlobValue, Blob](_.get)
+  implicit val blobDecoder = create(_.asInstanceOf[BlobValue].get())
   implicit val bytesDecoder =
-    create[BlobValue, Array[Byte]](_.get().toByteArray())
-  implicit val booleanDecoder = create[BooleanValue, Boolean](_.get)
-  implicit val doubleDecoder = create[DoubleValue, Double](_.get)
+    create(_.asInstanceOf[BlobValue].get().toByteArray())
+  implicit val booleanDecoder =
+    create[Boolean](_.asInstanceOf[BooleanValue].get())
+  implicit val doubleDecoder = create(_.asInstanceOf[DoubleValue].get())
   implicit def entityDecoder[T](implicit decoder: EntityDecoder[T]) =
     new ValueDecoder[T] {
       def decode(v: Value[_]) = Try(v.asInstanceOf[EntityValue]).toEither
         .flatMap(v => decoder.decodeEntity(v.get()))
     }
-  implicit val keyDecoder = create[KeyValue, Key](_.get)
-  implicit val latLngDecoder = create[LatLngValue, LatLng](_.get)
+  implicit val keyDecoder = create(_.asInstanceOf[KeyValue].get())
+  implicit val latLngDecoder = create(_.asInstanceOf[LatLngValue].get())
   implicit def seqDecoder[T](implicit vd: ValueDecoder[T]) =
     new ValueDecoder[Seq[T]] {
       def decode(v: Value[_]): Either[Throwable, Seq[T]] =
@@ -44,11 +48,12 @@ object ValueDecoder {
       } else {
         vd.decode(v).map(t => Some(t))
       }
+      override def acceptOption = true
     }
-  implicit val intDecoder = create[LongValue, Int](_.get.toInt)
-  implicit val longDecoder = create[LongValue, Long](_.get)
-  implicit val stringDecoder = create[StringValue, String](_.get)
-  implicit val timestampDecoder = create[TimestampValue, Timestamp](_.get)
+  implicit val intDecoder = create(_.asInstanceOf[LongValue].get().toInt)
+  implicit val longDecoder = create[Long](_.asInstanceOf[LongValue].get())
+  implicit val stringDecoder = create(_.asInstanceOf[StringValue].get())
+  implicit val timestampDecoder = create(_.asInstanceOf[TimestampValue].get())
 }
 
 trait EntityDecoder[A] {
@@ -72,7 +77,14 @@ object EntityDecoder {
   ) = create[FieldType[K, H] :: T] { e =>
     val fieldName = witness.value.name
     for {
-      v <- Try(e.getValue[Value[_]](fieldName)).toEither
+      v <-
+        if (e.contains(fieldName)) {
+          Right(e.getValue[Value[_]](fieldName))
+        } else if (hDecoder.acceptOption) {
+          Right(NullValue.of())
+        } else {
+          Try(e.getValue[Value[_]](fieldName)).toEither
+        }
       h <- hDecoder.decode(v)
       t <- tDecoder.decodeEntity(e)
     } yield {
