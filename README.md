@@ -1,17 +1,20 @@
 # store4s
 
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/net.pishen/store4s_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/net.pishen/store4s_2.13)
+[![javadoc](https://javadoc.io/badge2/net.pishen/store4s_2.13/javadoc.svg)](https://javadoc.io/doc/net.pishen/store4s_2.13)
+
 A Scala library for [Google Cloud Datastore](https://cloud.google.com/datastore), providing compile-time mappings between case classes and Datastore entities, and a type-safe query DSL.
 
 ## Installation
 
 For regular use:
 ```scala
-libraryDependencies += "net.pishen" %% "store4s" % "0.2.0"
+libraryDependencies += "net.pishen" %% "store4s" % "<version>"
 ```
 
 For [datastore-v1](https://github.com/googleapis/google-cloud-datastore) (compatible with Apache Beam):
 ```scala
-libraryDependencies += "net.pishen" %% "store4s-v1" % "0.2.0"
+libraryDependencies += "net.pishen" %% "store4s-v1" % "<version>"
 ```
 
 ## Encoding
