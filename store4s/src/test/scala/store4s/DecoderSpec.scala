@@ -1,11 +1,14 @@
 package store4s
 
+import com.google.cloud.Timestamp
 import com.google.cloud.datastore.DatastoreException
 import com.google.cloud.datastore.Entity
 import com.google.cloud.datastore.FullEntity
 import com.google.cloud.datastore.KeyFactory
 import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
+
+import java.util.Date
 
 class DecoderSpec extends AnyFlatSpec with EitherValues {
   val keyFactory = new KeyFactory("store4s")
@@ -83,5 +86,19 @@ class DecoderSpec extends AnyFlatSpec with EitherValues {
     val zS = Zombie("Sakura", Hometown("Japan", "Saga"))
 
     assert(decodeEntity[Zombie](zG) == Right(zS))
+  }
+
+  "A ValueDecoder" should "support map" in {
+    val time = Timestamp.ofTimeMicroseconds(0L)
+    val eG = FullEntity
+      .newBuilder(keyFactory.setKind("Universe").newKey())
+      .set("start", time)
+      .build()
+
+    implicit val dateDecoder = ValueDecoder.timestampDecoder.map(_.toDate())
+    case class Universe(start: Date)
+    val eS = Universe(time.toDate())
+
+    assert(decodeEntity[Universe](eG) == Right(eS))
   }
 }

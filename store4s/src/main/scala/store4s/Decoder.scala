@@ -8,8 +8,16 @@ import scala.util.Try
 import shapeless._
 import shapeless.labelled._
 
-trait ValueDecoder[T] {
+trait ValueDecoder[T] { self =>
   def decode(v: Value[_]): Either[Throwable, T]
+
+  def map[B](f: T => B) = new ValueDecoder[B] {
+    def decode(v: Value[_]) = self.decode(v).map(f)
+  }
+
+  def emap[B](f: T => Either[Throwable, B]) = new ValueDecoder[B] {
+    def decode(v: Value[_]) = self.decode(v).flatMap(f)
+  }
 
   /** Return `true` for `ValueDecoder[Option[T]]` */
   def acceptOption = false
@@ -23,8 +31,7 @@ object ValueDecoder {
   }
 
   implicit val blobDecoder = create(_.asInstanceOf[BlobValue].get())
-  implicit val bytesDecoder =
-    create(_.asInstanceOf[BlobValue].get().toByteArray())
+  implicit val bytesDecoder = blobDecoder.map(_.toByteArray())
   implicit val booleanDecoder =
     create[Boolean](_.asInstanceOf[BooleanValue].get())
   implicit val doubleDecoder = create(_.asInstanceOf[DoubleValue].get())

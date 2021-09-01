@@ -1,5 +1,6 @@
 package store4s
 
+import com.google.cloud.Timestamp
 import com.google.cloud.datastore.Entity
 import com.google.cloud.datastore.FullEntity
 import com.google.cloud.datastore.KeyFactory
@@ -80,5 +81,20 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest with MockFactory {
     val zS = Zombie("Sakura", Hometown("Japan", "Saga")).asEntity
 
     assert(zG == zS)
+  }
+
+  "A ValueEncoder" should "support contramap" in {
+    val eG = FullEntity
+      .newBuilder(keyFactory.setKind("Universe").newKey())
+      .set("start", Timestamp.ofTimeMicroseconds(0L))
+      .build()
+
+    implicit val timeEncoder = ValueEncoder.timestampEncoder.contramap[Long](
+      Timestamp.ofTimeMicroseconds
+    )
+    case class Universe(start: Long)
+    val eS = Universe(0L).asEntity
+
+    assert(eG == eS)
   }
 }

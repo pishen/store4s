@@ -6,8 +6,12 @@ import scala.jdk.CollectionConverters._
 import shapeless._
 import shapeless.labelled._
 
-trait ValueEncoder[T] {
+trait ValueEncoder[T] { self =>
   def encode(t: T): Value[_]
+
+  def contramap[A](f: A => T) = new ValueEncoder[A] {
+    def encode(a: A) = self.encode(f(a))
+  }
 }
 
 object ValueEncoder {
@@ -18,8 +22,7 @@ object ValueEncoder {
   }
 
   implicit val blobEncoder = create(BlobValue.of)
-  implicit val bytesEncoder =
-    create[Array[Byte]](bytes => BlobValue.of(Blob.copyFrom(bytes)))
+  implicit val bytesEncoder = blobEncoder.contramap[Array[Byte]](Blob.copyFrom)
   implicit val booleanEncoder = create(BooleanValue.of)
   implicit val doubleEncoder = create(DoubleValue.of)
   implicit def entityEncoder[T](implicit encoder: EntityEncoder[T]) =
