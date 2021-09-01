@@ -28,8 +28,12 @@ case class Query[S <: Selector](
       .newEntityQueryBuilder()
       .setKind(kind)
       .pure[Id]
-      .map(b => if (filters.nonEmpty) b.setFilter(filters.reduce(_ && _)) else b)
-      .map(b => if (orders.nonEmpty) b.setOrderBy(orders.head, orders.tail: _*) else b)
+      .map(b =>
+        if (filters.nonEmpty) b.setFilter(filters.reduce(_ && _)) else b
+      )
+      .map(b =>
+        if (orders.nonEmpty) b.setOrderBy(orders.head, orders.tail: _*) else b
+      )
       .map(b => limit.fold(b)(i => b.setLimit(i)))
       .map(b => start.fold(b)(c => b.setStartCursor(c)))
       .map(b => end.fold(b)(c => b.setEndCursor(c)))
