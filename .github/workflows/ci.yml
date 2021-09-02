@@ -10,4 +10,4 @@ jobs:
       with:
         java-version: "adopt@1.8"
     - name: Compile
-      run: sbt -v -Dfile.encoding=UTF-8 +test scalafmtCheck
+      run: sbt -v -Dfile.encoding=UTF-8 +test scalafmtCheckAll
