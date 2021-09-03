@@ -1,6 +1,5 @@
 package store4s
 
-import com.google.cloud.Timestamp
 import com.google.cloud.datastore.Entity
 import com.google.cloud.datastore.FullEntity
 import com.google.cloud.datastore.KeyFactory
@@ -8,6 +7,8 @@ import com.google.cloud.datastore.{Datastore => GDatastore}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.OneInstancePerTest
 import org.scalatest.flatspec.AnyFlatSpec
+
+import java.time.LocalDate
 
 class EncoderSpec extends AnyFlatSpec with OneInstancePerTest with MockFactory {
   val mockGDatastore = mock[GDatastore]
@@ -84,17 +85,18 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest with MockFactory {
   }
 
   "A ValueEncoder" should "support contramap" in {
-    val eG = FullEntity
-      .newBuilder(keyFactory.setKind("Universe").newKey())
-      .set("start", Timestamp.ofTimeMicroseconds(0L))
+    val zG = FullEntity
+      .newBuilder(keyFactory.setKind("Zombie").newKey())
+      .set("name", "Sakura Minamoto")
+      .set("birthday", "1991-04-02")
       .build()
 
-    implicit val timeEncoder = ValueEncoder.timestampEncoder.contramap[Long](
-      Timestamp.ofTimeMicroseconds
-    )
-    case class Universe(start: Long)
-    val eS = Universe(0L).asEntity
+    implicit val enc = ValueEncoder.stringEncoder
+      .contramap[LocalDate](_.toString())
 
-    assert(eG == eS)
+    case class Zombie(name: String, birthday: LocalDate)
+    val zS = Zombie("Sakura Minamoto", LocalDate.of(1991, 4, 2)).asEntity
+
+    assert(zG == zS)
   }
 }
