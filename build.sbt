@@ -8,7 +8,13 @@ ThisBuild / scalacOptions ++= {
   val common = Seq(
     "-feature",
     "-deprecation",
-    "-language:higherKinds"
+    "-language:higherKinds",
+    "-Ywarn-unused:implicits",
+    "-Ywarn-unused:imports",
+    "-Ywarn-unused:locals",
+    "-Ywarn-unused:params",
+    "-Ywarn-unused:patvars",
+    "-Ywarn-unused:privates"
   )
   CrossVersion.partialVersion(scalaVersion.value) match {
     case Some((2, 12)) => common :+ "-Ypartial-unification" // for cats

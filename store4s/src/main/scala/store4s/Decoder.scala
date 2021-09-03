@@ -1,12 +1,12 @@
 package store4s
 
 import cats.implicits._
-import com.google.cloud.Timestamp
 import com.google.cloud.datastore.{Datastore => _, _}
-import scala.jdk.CollectionConverters._
-import scala.util.Try
 import shapeless._
 import shapeless.labelled._
+
+import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 trait ValueDecoder[T] { self =>
   def decode(v: Value[_]): Either[Throwable, T]

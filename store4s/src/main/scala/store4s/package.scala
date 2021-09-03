@@ -1,7 +1,5 @@
 import com.google.cloud.datastore.Entity
-import com.google.cloud.datastore.EntityQuery
 import com.google.cloud.datastore.FullEntity
-import com.google.cloud.datastore.KeyFactory
 import com.google.cloud.datastore.StructuredQuery.CompositeFilter
 import com.google.cloud.datastore.StructuredQuery.Filter
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter
