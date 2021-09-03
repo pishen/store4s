@@ -74,3 +74,5 @@ Query[Zombie]
   .take(3)
   .run
 ```
+
+Check the [testing code](store4s/src/test/scala/store4s/QuerySpec.scala) for more supported features.
