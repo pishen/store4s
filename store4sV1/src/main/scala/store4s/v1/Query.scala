@@ -2,7 +2,6 @@ package store4s.v1
 
 import cats.Id
 import cats.implicits._
-import com.google.datastore.v1.{Query => GQuery}
 import com.google.datastore.v1.CompositeFilter
 import com.google.datastore.v1.Filter
 import com.google.datastore.v1.KindExpression
@@ -11,15 +10,15 @@ import com.google.datastore.v1.PropertyFilter.Operator
 import com.google.datastore.v1.PropertyOrder
 import com.google.datastore.v1.PropertyOrder.Direction
 import com.google.datastore.v1.PropertyReference
+import com.google.datastore.v1.{Query => GQuery}
 import com.google.protobuf.ByteString
 import com.google.protobuf.Int32Value
+
 import scala.jdk.CollectionConverters._
 import scala.language.experimental.macros
 import scala.reflect.macros.whitebox.Context
 
-trait Selector
-
-case class Query[S <: Selector](
+case class Query[S](
     kind: String,
     selector: S,
     filters: Seq[Filter] = Seq.empty,
@@ -95,15 +94,16 @@ object Query {
     val typeName = weakTypeOf[T].typeSymbol.name.toString()
     val defs = weakTypeOf[T].members.toSeq.filterNot(_.isMethod).map { s =>
       val name = s.name.toString().trim()
-      q"val ${TermName(name)} = store4s.v1.Query.Property[${s.info}]($name)"
+      q"val ${TermName(name)} = Query.Property[${s.info}]($name)"
     }
 
     q"""
-      store4s.v1.Query(
+      trait Selector {
+        ..$defs
+      }
+      Query[Selector](
         $typeName,
-        new store4s.v1.Selector {
-          ..$defs
-        }
+        new Selector {}
       )
     """
   }

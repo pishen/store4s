@@ -1,11 +1,13 @@
 package store4s
 
-import com.google.cloud.datastore.{Datastore => GDatastore}
 import com.google.cloud.datastore.DatastoreOptions
 import com.google.cloud.datastore.Entity
+import com.google.cloud.datastore.EntityQuery
 import com.google.cloud.datastore.FullEntity
 import com.google.cloud.datastore.Key
 import com.google.cloud.datastore.ReadOption
+import com.google.cloud.datastore.{Datastore => GDatastore}
+
 import scala.reflect.runtime.universe._
 
 case class Datastore(underlying: GDatastore) {
@@ -20,6 +22,7 @@ case class Datastore(underlying: GDatastore) {
   )
   def delete(key: Key) = underlying.delete(key)
   def update(entity: Entity) = underlying.update(entity)
+  def run(query: EntityQuery) = underlying.run(query, Seq.empty[ReadOption]: _*)
 }
 
 object Datastore {
