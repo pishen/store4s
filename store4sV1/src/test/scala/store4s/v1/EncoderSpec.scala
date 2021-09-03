@@ -13,26 +13,27 @@ import scala.jdk.CollectionConverters._
 class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
 
   implicit val datastore = Datastore("store4s")
+  def entityBuilder(kind: String) = Entity
+    .newBuilder()
+    .setKey(
+      Key
+        .newBuilder()
+        .setPartitionId(
+          PartitionId
+            .newBuilder()
+            .setProjectId("store4s")
+            .build()
+        )
+        .addPath(
+          Key.PathElement
+            .newBuilder()
+            .setKind(kind)
+            .setName("entityName")
+        )
+    )
 
   "An EntityEncoder" should "generate same output as Google Cloud Java" in {
-    val userG = Entity
-      .newBuilder()
-      .setKey(
-        Key
-          .newBuilder()
-          .setPartitionId(
-            PartitionId
-              .newBuilder()
-              .setProjectId("store4s")
-              .build()
-          )
-          .addPath(
-            Key.PathElement
-              .newBuilder()
-              .setKind("User")
-              .setName("entityName")
-          )
-      )
+    val userG = entityBuilder("User")
       .putProperties("id", Value.newBuilder().setIntegerValue(1).build())
       .putProperties(
         "name",
@@ -48,24 +49,7 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
   }
 
   it should "support nullable value" in {
-    val userG = Entity
-      .newBuilder()
-      .setKey(
-        Key
-          .newBuilder()
-          .setPartitionId(
-            PartitionId
-              .newBuilder()
-              .setProjectId("store4s")
-              .build()
-          )
-          .addPath(
-            Key.PathElement
-              .newBuilder()
-              .setKind("User")
-              .setName("entityName")
-          )
-      )
+    val userG = entityBuilder("User")
       .putProperties(
         "name",
         Value.newBuilder().setNullValue(NullValue.NULL_VALUE).build()
@@ -88,24 +72,7 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
           .asJava
       )
       .build()
-    val groupG = Entity
-      .newBuilder()
-      .setKey(
-        Key
-          .newBuilder()
-          .setPartitionId(
-            PartitionId
-              .newBuilder()
-              .setProjectId("store4s")
-              .build()
-          )
-          .addPath(
-            Key.PathElement
-              .newBuilder()
-              .setKind("Group")
-              .setName("entityName")
-          )
-      )
+    val groupG = entityBuilder("Group")
       .putProperties("id", Value.newBuilder().setIntegerValue(1).build())
       .putProperties(
         "members",
@@ -131,24 +98,7 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
         Value.newBuilder().setStringValue("Saga").build()
       )
       .build()
-    val userG = Entity
-      .newBuilder()
-      .setKey(
-        Key
-          .newBuilder()
-          .setPartitionId(
-            PartitionId
-              .newBuilder()
-              .setProjectId("store4s")
-              .build()
-          )
-          .addPath(
-            Key.PathElement
-              .newBuilder()
-              .setKind("User")
-              .setName("entityName")
-          )
-      )
+    val userG = entityBuilder("User")
       .putProperties(
         "name",
         Value.newBuilder().setStringValue("Sakura").build()
