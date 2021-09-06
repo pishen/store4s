@@ -6,6 +6,7 @@ import com.google.datastore.v1.Key
 import com.google.datastore.v1.PartitionId
 import com.google.datastore.v1.Value
 import com.google.protobuf.NullValue
+import java.time.LocalDate
 import org.scalatest.OneInstancePerTest
 import org.scalatest.flatspec.AnyFlatSpec
 import scala.jdk.CollectionConverters._
@@ -101,7 +102,7 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
     val userG = entityBuilder("User")
       .putProperties(
         "name",
-        Value.newBuilder().setStringValue("Sakura").build()
+        Value.newBuilder().setStringValue("Sakura Minamoto").build()
       )
       .putProperties(
         "hometown",
@@ -111,7 +112,30 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
 
     case class Hometown(country: String, city: String)
     case class User(name: String, hometown: Hometown)
-    val userS = User("Sakura", Hometown("Japan", "Saga")).asEntity("entityName")
+    val userS =
+      User("Sakura Minamoto", Hometown("Japan", "Saga")).asEntity("entityName")
+
+    assert(userG == userS)
+  }
+
+  "A ValueEncoder" should "support contramap" in {
+    val userG = entityBuilder("User")
+      .putProperties(
+        "name",
+        Value.newBuilder().setStringValue("Sakura Minamoto").build()
+      )
+      .putProperties(
+        "birthday",
+        Value.newBuilder().setStringValue("1991-04-02").build()
+      )
+      .build()
+
+    implicit val enc =
+      ValueEncoder.stringEncoder.contramap[LocalDate](_.toString())
+
+    case class User(name: String, birthday: LocalDate)
+    val userS =
+      User("Sakura Minamoto", LocalDate.of(1991, 4, 2)).asEntity("entityName")
 
     assert(userG == userS)
   }
