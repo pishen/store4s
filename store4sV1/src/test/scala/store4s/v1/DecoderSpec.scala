@@ -82,8 +82,8 @@ class DecoderSpec extends AnyFlatSpec with EitherValues {
       )
       .build()
 
-    case class User(name: Option[String])
-    val userS = User(None)
+    case class User(name: Option[String], age: Option[Int])
+    val userS = User(None, None)
 
     assert(decodeEntity[User](userG) == Right(userS))
   }
