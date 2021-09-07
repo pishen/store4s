@@ -1,10 +1,10 @@
 package store4s
 
-import com.google.cloud.Timestamp
 import com.google.cloud.datastore.{Datastore => _, _}
-import scala.jdk.CollectionConverters._
 import shapeless._
 import shapeless.labelled._
+
+import scala.jdk.CollectionConverters._
 
 trait ValueEncoder[T] { self =>
   def encode(t: T): Value[_]

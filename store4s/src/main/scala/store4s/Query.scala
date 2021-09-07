@@ -2,19 +2,19 @@ package store4s
 
 import cats.Id
 import cats.implicits._
-import com.google.cloud.datastore.{Query => GQuery}
 import com.google.cloud.datastore.Cursor
+import com.google.cloud.datastore.Entity
 import com.google.cloud.datastore.QueryResults
-import com.google.cloud.datastore.ReadOption
 import com.google.cloud.datastore.StructuredQuery.Filter
 import com.google.cloud.datastore.StructuredQuery.OrderBy
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter
+import com.google.cloud.datastore.{Query => GQuery}
+
+import scala.jdk.CollectionConverters._
 import scala.language.experimental.macros
 import scala.reflect.macros.whitebox.Context
 
-trait Selector
-
-case class Query[S <: Selector](
+case class Query[S, T: EntityDecoder](
     kind: String,
     selector: S,
     filters: Seq[Filter] = Seq.empty,
@@ -43,8 +43,8 @@ case class Query[S <: Selector](
   def take(n: Int) = this.copy(limit = Some(n))
   def startFrom(cursor: Cursor) = this.copy(start = Some(cursor))
   def endAt(cursor: Cursor) = this.copy(end = Some(cursor))
-  def run(implicit datastore: Datastore) = {
-    datastore.underlying.run(builder().build(), Seq.empty[ReadOption]: _*)
+  def run(implicit ds: Datastore) = {
+    Query.Result[T](ds.run(builder().build()))
   }
 }
 
@@ -59,6 +59,13 @@ object Query {
     def desc: OrderBy = OrderBy.desc(name)
   }
 
+  case class Result[T: EntityDecoder](underlying: QueryResults[Entity]) {
+    def getEntities: Seq[Entity] = underlying.asScala.toList
+    def getEithers = getEntities.map(decodeEntity[T])
+    def getRights = getEithers.map(_.toTry.get)
+    def getCursorAfter = underlying.getCursorAfter()
+  }
+
   def apply[T]: Any = macro impl[T]
 
   def impl[T: c.WeakTypeTag](c: Context) = {
@@ -66,15 +73,16 @@ object Query {
     val typeName = weakTypeOf[T].typeSymbol.name.toString()
     val defs = weakTypeOf[T].members.toSeq.filterNot(_.isMethod).map { s =>
       val name = s.name.toString().trim()
-      q"val ${TermName(name)} = store4s.Query.Property[${s.info}]($name)"
+      q"val ${TermName(name)} = Query.Property[${s.info}]($name)"
     }
 
     q"""
-      store4s.Query(
+      trait Selector {
+        ..$defs
+      }
+      Query[Selector, ${weakTypeOf[T]}](
         $typeName,
-        new store4s.Selector {
-          ..$defs
-        }
+        new Selector {}
       )
     """
   }

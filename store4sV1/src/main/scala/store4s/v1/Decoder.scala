@@ -3,10 +3,11 @@ package store4s.v1
 import cats.implicits._
 import com.google.datastore.v1.Entity
 import com.google.datastore.v1.Value
-import scala.jdk.CollectionConverters._
-import scala.util.Try
 import shapeless._
 import shapeless.labelled._
+
+import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 trait ValueDecoder[T] { self =>
   def decode(v: Value): Either[Throwable, T]

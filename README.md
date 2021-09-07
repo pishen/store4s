@@ -67,10 +67,31 @@ case class Zombie(number: Int, name: String, girl: Boolean)
 
 implicit val datastore = Datastore.defaultInstance
 
-Query[Zombie]
+val q = Query[Zombie]
   .filter(_.girl)
   .filter(_.number > 1)
   .sortBy(_.number.desc)
   .take(3)
+
+val r1: EntityQuery = q.builder().build()
+val r2: Seq[Entity] = q.run.getEntities
+val r3: Seq[Either[Throwable, Zombie]] = q.run.getEithers
+val r4: Seq[Zombie] = q.run.getRights
+```
+
+Use `getRights` to decode the Entities and throw Exceptions if any decoding failed.
+
+There's also a `contains` function for [array type values](https://cloud.google.com/datastore/docs/concepts/queries#multiple_equality_filters):
+```scala
+import store4s._
+case class Task(tags: Seq[String])
+
+implicit val datastore = Datastore.defaultInstance
+
+Query[Task]
+  .filter(_.tags.contains("Scala"))
+  .filter(_.tags.contains("rocks"))
   .run
 ```
+
+Check the [testing code](store4s/src/test/scala/store4s/QuerySpec.scala) for more supported features.

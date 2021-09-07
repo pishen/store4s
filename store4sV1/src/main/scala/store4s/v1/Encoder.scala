@@ -1,5 +1,6 @@
 package store4s.v1
 
+import com.google.`type`.LatLng
 import com.google.datastore.v1.ArrayValue
 import com.google.datastore.v1.Entity
 import com.google.datastore.v1.Key
@@ -7,10 +8,10 @@ import com.google.datastore.v1.Value
 import com.google.protobuf.ByteString
 import com.google.protobuf.NullValue
 import com.google.protobuf.Timestamp
-import com.google.`type`.LatLng
-import scala.jdk.CollectionConverters._
 import shapeless._
 import shapeless.labelled._
+
+import scala.jdk.CollectionConverters._
 
 trait ValueEncoder[T] { self =>
   def encode(t: T): Value.Builder

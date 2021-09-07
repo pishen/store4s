@@ -1,16 +1,17 @@
 package store4s
 
 import com.google.cloud.Timestamp
+import com.google.cloud.datastore.Entity
+import com.google.cloud.datastore.KeyFactory
+import com.google.cloud.datastore.QueryResults
 import com.google.cloud.datastore.StructuredQuery.CompositeFilter
 import com.google.cloud.datastore.StructuredQuery.OrderBy
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter
 import com.google.cloud.datastore.{Query => GQuery}
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.flatspec.AnyFlatSpec
 
-import scala.language.reflectiveCalls
-import com.google.cloud.datastore.Cursor
-
-class QuerySpec extends AnyFlatSpec {
+class QuerySpec extends AnyFlatSpec with MockFactory {
   "A Query" should "generate same Query as Google Cloud Java" in {
     val qG = GQuery
       .newEntityQueryBuilder()
@@ -79,5 +80,57 @@ class QuerySpec extends AnyFlatSpec {
     val qS = Query[Task].take(5).builder().build()
 
     assert(qG == qS)
+  }
+
+  it should "support array contains" in {
+    val qG = GQuery
+      .newEntityQueryBuilder()
+      .setKind("Task")
+      .setFilter(
+        CompositeFilter.and(
+          PropertyFilter.eq("tag", "fun"),
+          PropertyFilter.eq("tag", "programming")
+        )
+      )
+      .build()
+
+    case class Task(tag: Seq[String])
+    val qS = Query[Task]
+      .filter(_.tag.contains("fun"))
+      .filter(_.tag.contains("programming"))
+      .builder()
+      .build()
+
+    assert(qG == qS)
+  }
+
+  it should "decode QueryResults" in {
+    val results = new QueryResults[Entity] {
+      val keyFactory = new KeyFactory("store4s").setKind("User")
+      def userEntity(id: Int) = {
+        Entity
+          .newBuilder(keyFactory.newKey(id))
+          .set("id", id)
+          .build()
+      }
+      val iter = Iterator(1, 2, 3).map(userEntity)
+      override def hasNext() = iter.hasNext
+      override def next() = iter.next()
+      override def getResultClass() = ???
+      override def getCursorAfter() = ???
+      override def getSkippedResults() = ???
+      override def getMoreResults() = ???
+    }
+
+    implicit val mockDatastore = mock[Datastore]
+    (mockDatastore.run _).expects(*).returning(results)
+
+    case class User(id: Int)
+    val res: Seq[User] = Query[User]
+      .filter(_.id > 0)
+      .run
+      .getRights
+
+    assert(res == Seq(1, 2, 3).map(id => User(id)))
   }
 }

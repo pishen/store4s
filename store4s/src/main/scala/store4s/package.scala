@@ -1,9 +1,9 @@
 import com.google.cloud.datastore.Entity
-import com.google.cloud.datastore.EntityQuery
 import com.google.cloud.datastore.FullEntity
-import com.google.cloud.datastore.KeyFactory
 import com.google.cloud.datastore.StructuredQuery.CompositeFilter
 import com.google.cloud.datastore.StructuredQuery.Filter
+import com.google.cloud.datastore.StructuredQuery.PropertyFilter
+
 import scala.language.implicitConversions
 import scala.reflect.runtime.universe._
 
@@ -42,5 +42,11 @@ package object store4s {
 
   implicit def booleanProperty2Filter(p: Query.Property[Boolean]): Filter = {
     p == true
+  }
+
+  implicit class PropertyWrapper[T](arr: Query.Property[Seq[T]]) {
+    def contains(t: T)(implicit enc: ValueEncoder[T]): Filter = {
+      PropertyFilter.eq(arr.name, enc.encode(t))
+    }
   }
 }
