@@ -10,7 +10,6 @@ import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 
 import java.time.LocalDate
-import java.util.Date
 import scala.jdk.CollectionConverters._
 
 class DecoderSpec extends AnyFlatSpec with EitherValues {
