@@ -3,11 +3,11 @@ package store4s.v1
 import cats.implicits._
 import com.google.datastore.v1.Entity
 import com.google.datastore.v1.Value
+import com.google.protobuf.NullValue
 import shapeless._
 import shapeless.labelled._
 
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 trait ValueDecoder[T] { self =>
   def decode(v: Value): Either[Throwable, T]
@@ -19,6 +19,9 @@ trait ValueDecoder[T] { self =>
   def emap[B](f: T => Either[Throwable, B]) = new ValueDecoder[B] {
     def decode(v: Value) = self.decode(v).flatMap(f)
   }
+
+  /** Return `true` for `ValueDecoder[Option[T]]` */
+  def acceptOption = false
 }
 
 object ValueDecoder {
@@ -63,6 +66,7 @@ object ValueDecoder {
       } else {
         vd.decode(v).map(t => Some(t))
       }
+      override def acceptOption = true
     }
   implicit val intDecoder =
     create(_.hasIntegerValue())(_.getIntegerValue().toInt)
@@ -92,7 +96,14 @@ object EntityDecoder {
   ) = create[FieldType[K, H] :: T] { e =>
     val fieldName = witness.value.name
     for {
-      v <- Try(e.getPropertiesOrThrow(fieldName)).toEither
+      v <-
+        if (e.containsProperties(fieldName)) {
+          Right(e.getPropertiesOrThrow(fieldName))
+        } else if (hDecoder.acceptOption) {
+          Right(Value.newBuilder().setNullValue(NullValue.NULL_VALUE).build())
+        } else {
+          Left(new IllegalArgumentException("Property not found: " + fieldName))
+        }
       h <- hDecoder.decode(v)
       t <- tDecoder.decodeEntity(e)
     } yield {
