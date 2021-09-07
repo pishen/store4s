@@ -2,7 +2,6 @@ package store4s.v1
 
 import cats.Id
 import cats.implicits._
-import com.google.datastore.v1.CompositeFilter
 import com.google.datastore.v1.Filter
 import com.google.datastore.v1.KindExpression
 import com.google.datastore.v1.PropertyFilter
@@ -33,18 +32,7 @@ case class Query[S](
       .pure[Id]
       .map(_.addKind(KindExpression.newBuilder().setName(kind)))
       .map(b =>
-        if (filters.nonEmpty)
-          b.setFilter(
-            Filter
-              .newBuilder()
-              .setCompositeFilter(
-                CompositeFilter
-                  .newBuilder()
-                  .setOp(CompositeFilter.Operator.AND)
-                  .addAllFilters(filters.asJava)
-              )
-          )
-        else b
+        if (filters.nonEmpty) b.setFilter(filters.reduce(_ && _)) else b
       )
       .map(b => if (orders.nonEmpty) b.addAllOrder(orders.asJava) else b)
       .map(b => limit.fold(b)(i => b.setLimit(Int32Value.of(i))))
