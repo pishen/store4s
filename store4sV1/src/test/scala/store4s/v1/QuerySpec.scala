@@ -130,4 +130,51 @@ class QuerySpec extends AnyFlatSpec {
 
     assert(qG == qS)
   }
+
+  it should "support array contains" in {
+    val arrayFilter1 = Filter
+      .newBuilder()
+      .setPropertyFilter(
+        PropertyFilter
+          .newBuilder()
+          .setOp(Operator.EQUAL)
+          .setProperty(PropertyReference.newBuilder().setName("tag"))
+          .setValue(Value.newBuilder().setStringValue("fun").build())
+      )
+      .build()
+    val arrayFilter2 = Filter
+      .newBuilder()
+      .setPropertyFilter(
+        PropertyFilter
+          .newBuilder()
+          .setOp(Operator.EQUAL)
+          .setProperty(PropertyReference.newBuilder().setName("tag"))
+          .setValue(Value.newBuilder().setStringValue("programming").build())
+      )
+      .build()
+    val qG = GQuery
+      .newBuilder()
+      .addKind(KindExpression.newBuilder().setName("Task"))
+      .setFilter(
+        Filter
+          .newBuilder()
+          .setCompositeFilter(
+            CompositeFilter
+              .newBuilder()
+              .addFilters(arrayFilter1)
+              .addFilters(arrayFilter2)
+              .setOp(CompositeFilter.Operator.AND)
+          )
+      )
+      .build()
+
+    case class Task(tag: Seq[String])
+    val qS = Query[Task]
+      .filter(_.tag.contains("fun"))
+      .filter(_.tag.contains("programming"))
+      .builder()
+      .build()
+
+    assert(qG == qS)
+  }
 }
