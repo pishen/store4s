@@ -35,6 +35,12 @@ val z2 = Zombie(2, "Saki Nikaido", true).asEntity(2)
 ```
 The basic data types, `Seq`, `Option`, and nested case classes are supported.
 
+To support custom types, one can create a `ValueEncoder` from an existing `ValueEncoder` using `contramap`:
+```scala
+val enc: ValueEncoder[LocalDate] =
+  ValueEncoder.stringEncoder.contramap[LocalDate](_.toString)
+```
+
 To insert, upsert, or update the entity into datastore:
 ```scala
 datastore.add(z6)
@@ -57,6 +63,12 @@ val e1: Option[Entity] = datastore.get(key1)
 Decode an entity into case class using `decodeEntity`:
 ```scala
 val z: Either[Throwable, Zombie] = decodeEntity[Zombie](e1.get)
+```
+
+To support custom types, one can create a `ValueDecoder` from an existing `ValueDecoder` using `map` or `emap`:
+```scala
+val dec: ValueDecoder[LocalDate] =
+  ValueDecoder.stringDecoder.map(LocalDate.parse)
 ```
 
 ## Querying
