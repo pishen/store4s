@@ -57,6 +57,7 @@ package object v1 {
       .setCompositeFilter(
         CompositeFilter
           .newBuilder()
+          .setOp(CompositeFilter.Operator.AND)
           .addFilters(left)
           .addFilters(right)
       )
