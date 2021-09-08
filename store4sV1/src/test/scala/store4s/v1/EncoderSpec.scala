@@ -33,7 +33,7 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
         )
     )
 
-  "An EntityEncoder" should "generate same output as Google Cloud Java" in {
+  "An v1.EntityEncoder" should "generate same output as Google Cloud Java" in {
     val userG = entityBuilder("User")
       .putProperties("id", Value.newBuilder().setIntegerValue(1).build())
       .putProperties(
@@ -118,7 +118,7 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
     assert(userG == userS)
   }
 
-  "A ValueEncoder" should "support contramap" in {
+  "A v1.ValueEncoder" should "support contramap" in {
     val userG = entityBuilder("User")
       .putProperties(
         "name",

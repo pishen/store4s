@@ -46,7 +46,7 @@ class QuerySpec extends AnyFlatSpec {
     .setProperty(PropertyReference.newBuilder().setName("created"))
     .build()
 
-  "A Query" should "generate same Query as Google Cloud Java" in {
+  "A v1.Query" should "generate same Query as Google Cloud Java" in {
     val qG = GQuery
       .newBuilder()
       .addKind(KindExpression.newBuilder().setName("Task"))

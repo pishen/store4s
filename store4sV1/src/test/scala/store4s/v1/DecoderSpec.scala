@@ -32,7 +32,7 @@ class DecoderSpec extends AnyFlatSpec with EitherValues {
         )
     )
 
-  "An EntityDecoder" should "decode Entity into case class" in {
+  "An v1.EntityDecoder" should "decode Entity into case class" in {
     val userG = entityBuilder("User")
       .putProperties(
         "id",
@@ -142,7 +142,7 @@ class DecoderSpec extends AnyFlatSpec with EitherValues {
     assert(decodeEntity[User](userG) == Right(userS))
   }
 
-  "A ValueDecoder" should "support map" in {
+  "A v1.ValueDecoder" should "support map" in {
     val userG = entityBuilder("User")
       .putProperties(
         "name",
