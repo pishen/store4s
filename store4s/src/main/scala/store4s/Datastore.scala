@@ -8,6 +8,7 @@ import com.google.cloud.datastore.Key
 import com.google.cloud.datastore.ReadOption
 import com.google.cloud.datastore.{Datastore => GDatastore}
 
+import scala.jdk.CollectionConverters._
 import scala.reflect.runtime.universe._
 
 case class Datastore(underlying: GDatastore) {
@@ -16,9 +17,14 @@ case class Datastore(underlying: GDatastore) {
     .setKind(weakTypeOf[A].typeSymbol.name.toString())
 
   def add(entity: FullEntity[_]) = underlying.add(entity)
+  def add(entity: Seq[FullEntity[_]]) = underlying.add(entity: _*)
   def put(entity: FullEntity[_]) = underlying.put(entity)
+  def put(entity: Seq[FullEntity[_]]) = underlying.put(entity: _*)
   def get(key: Key) = Option(
     underlying.get(key, Seq.empty[ReadOption]: _*)
+  )
+  def get(key: Seq[Key]) = Option(
+    underlying.get(key.asJava, Seq.empty[ReadOption]: _*)
   )
   def getEither[A: WeakTypeTag: EntityDecoder](name: String) = {
     get(keyFactory[A].newKey(name)).map(decodeEntity[A])
