@@ -95,6 +95,10 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
         Value.newBuilder().setStringValue("Japan").build()
       )
       .putProperties(
+        "region",
+        Value.newBuilder().setStringValue("Kyushu").build()
+      )
+      .putProperties(
         "city",
         Value.newBuilder().setStringValue("Saga").build()
       )
@@ -110,10 +114,12 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
       )
       .build()
 
-    case class Hometown(country: String, city: String)
+    case class Hometown(country: String, region: String, city: String)
     case class User(name: String, hometown: Hometown)
-    val userS =
-      User("Sakura Minamoto", Hometown("Japan", "Saga")).asEntity("entityName")
+    val userS = User(
+      "Sakura Minamoto",
+      Hometown("Japan", "Kyushu", "Saga")
+    ).asEntity("entityName")
 
     assert(userG == userS)
   }

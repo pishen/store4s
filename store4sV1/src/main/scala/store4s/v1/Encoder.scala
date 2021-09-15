@@ -88,6 +88,6 @@ object EntityEncoder {
 
   implicit def genericEncoder[A, R](implicit
       generic: LabelledGeneric.Aux[A, R],
-      encoder: EntityEncoder[R]
-  ) = create[A]((obj, eb) => encoder.encodeEntity(generic.to(obj), eb))
+      encoder: Lazy[EntityEncoder[R]]
+  ) = create[A]((obj, eb) => encoder.value.encodeEntity(generic.to(obj), eb))
 }

@@ -120,6 +120,10 @@ class DecoderSpec extends AnyFlatSpec with EitherValues {
         Value.newBuilder().setStringValue("Japan").build()
       )
       .putProperties(
+        "region",
+        Value.newBuilder().setStringValue("Kyushu").build()
+      )
+      .putProperties(
         "city",
         Value.newBuilder().setStringValue("Saga").build()
       )
@@ -135,9 +139,9 @@ class DecoderSpec extends AnyFlatSpec with EitherValues {
       )
       .build()
 
-    case class Hometown(country: String, city: String)
+    case class Hometown(country: String, region: String, city: String)
     case class User(name: String, hometown: Hometown)
-    val userS = User("Sakura", Hometown("Japan", "Saga"))
+    val userS = User("Sakura", Hometown("Japan", "Kyushu", "Saga"))
 
     assert(decodeEntity[User](userG) == Right(userS))
   }

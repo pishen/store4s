@@ -72,6 +72,7 @@ class DecoderSpec extends AnyFlatSpec with EitherValues {
     val hometown = FullEntity
       .newBuilder()
       .set("country", "Japan")
+      .set("region", "Kyushu")
       .set("city", "Saga")
       .build()
     val zG = FullEntity
@@ -80,9 +81,10 @@ class DecoderSpec extends AnyFlatSpec with EitherValues {
       .set("hometown", hometown)
       .build()
 
-    case class Hometown(country: String, city: String)
+    // we need 3 fields in Hometown to check diverging implicit (Lazy)
+    case class Hometown(country: String, region: String, city: String)
     case class Zombie(name: String, hometown: Hometown)
-    val zS = Zombie("Sakura", Hometown("Japan", "Saga"))
+    val zS = Zombie("Sakura", Hometown("Japan", "Kyushu", "Saga"))
 
     assert(decodeEntity[Zombie](zG) == Right(zS))
   }

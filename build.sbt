@@ -14,7 +14,9 @@ ThisBuild / scalacOptions ++= {
     "-Ywarn-unused:locals",
     "-Ywarn-unused:params",
     "-Ywarn-unused:patvars",
-    "-Ywarn-unused:privates"
+    "-Ywarn-unused:privates",
+    //https://stackoverflow.com/questions/56351793
+    "-Ywarn-macros:after"
   )
   CrossVersion.partialVersion(scalaVersion.value) match {
     case Some((2, 12)) => common :+ "-Ypartial-unification" // for cats

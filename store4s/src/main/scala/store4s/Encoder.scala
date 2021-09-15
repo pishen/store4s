@@ -74,10 +74,10 @@ object EntityEncoder {
 
   implicit def genericEncoder[A, R](implicit
       generic: LabelledGeneric.Aux[A, R],
-      encoder: EntityEncoder[R]
+      encoder: Lazy[EntityEncoder[R]]
   ) = new EntityEncoder[A] {
     def encodeEntity[B <: BaseEntity.Builder[_, B]](obj: A, eb: B): B = {
-      encoder.encodeEntity(generic.to(obj), eb)
+      encoder.value.encodeEntity(generic.to(obj), eb)
     }
   }
 }

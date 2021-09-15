@@ -69,6 +69,7 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest with MockFactory {
     val hometown = FullEntity
       .newBuilder()
       .set("country", "Japan")
+      .set("region", "Kyushu")
       .set("city", "Saga")
       .build()
     val zG = FullEntity
@@ -77,9 +78,10 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest with MockFactory {
       .set("hometown", hometown)
       .build()
 
-    case class Hometown(country: String, city: String)
+    // we need 3 fields in Hometown to check diverging implicit (Lazy)
+    case class Hometown(country: String, region: String, city: String)
     case class Zombie(name: String, hometown: Hometown)
-    val zS = Zombie("Sakura", Hometown("Japan", "Saga")).asEntity
+    val zS = Zombie("Sakura", Hometown("Japan", "Kyushu", "Saga")).asEntity
 
     assert(zG == zS)
   }

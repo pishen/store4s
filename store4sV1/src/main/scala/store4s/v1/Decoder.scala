@@ -113,8 +113,8 @@ object EntityDecoder {
 
   implicit def genericDecoder[A, R](implicit
       generic: LabelledGeneric.Aux[A, R],
-      decoder: EntityDecoder[R]
+      decoder: Lazy[EntityDecoder[R]]
   ) = create[A] { e =>
-    decoder.decodeEntity(e).map(generic.from)
+    decoder.value.decodeEntity(e).map(generic.from)
   }
 }
