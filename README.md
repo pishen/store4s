@@ -54,15 +54,20 @@ Get an entity from datastore:
 import store4s._
 case class Zombie(number: Int, name: String, girl: Boolean)
 
-val datastore = Datastore.defaultInstance
+val ds = Datastore.defaultInstance
 
-val key1 = datastore.keyFactory[Zombie].newKey("heroine")
-val e1: Option[Entity] = datastore.get(key1)
+val key1 = ds.keyFactory[Zombie].newKey("heroine")
+val e1: Option[Entity] = ds.get(key1)
 ```
 
 Decode an entity into case class using `decodeEntity`:
 ```scala
-val z: Either[Throwable, Zombie] = decodeEntity[Zombie](e1.get)
+val zE: Either[Throwable, Zombie] = decodeEntity[Zombie](e1.get)
+```
+
+If you want to decode the entity directly and throw the Exception when it fail:
+```scala
+val zOpt: Option[Zombie] = ds.getRight[Zombie]("heroine")
 ```
 
 To support custom types, one can create a `ValueDecoder` from an existing `ValueDecoder` using `map` or `emap`:
