@@ -131,7 +131,7 @@ class QuerySpec extends AnyFlatSpec {
     assert(qG == qS)
   }
 
-  it should "support array contains" in {
+  it should "support array exists" in {
     val arrayFilter1 = Filter
       .newBuilder()
       .setPropertyFilter(
@@ -170,8 +170,68 @@ class QuerySpec extends AnyFlatSpec {
 
     case class Task(tag: Seq[String])
     val qS = Query[Task]
-      .filter(_.tag.contains("fun"))
-      .filter(_.tag.contains("programming"))
+      .filter(_.tag.exists(_ == "fun"))
+      .filter(_.tag.exists(_ == "programming"))
+      .builder()
+      .build()
+
+    assert(qG == qS)
+  }
+
+  it should "support nested entity" in {
+    val qG = GQuery
+      .newBuilder()
+      .addKind(KindExpression.newBuilder().setName("Zombie"))
+      .setFilter(
+        Filter
+          .newBuilder()
+          .setPropertyFilter(
+            PropertyFilter
+              .newBuilder()
+              .setOp(Operator.EQUAL)
+              .setProperty(
+                PropertyReference.newBuilder().setName("hometown.city")
+              )
+              .setValue(Value.newBuilder().setStringValue("Saga").build())
+          )
+      )
+      .build()
+
+    case class Hometown(country: String, city: String)
+    case class Zombie(name: String, hometown: Hometown)
+    val qS = Query[Zombie]
+      .filter(_.hometown.city == "Saga")
+      .builder()
+      .build()
+
+    assert(qG == qS)
+  }
+
+  it should "support exists for entity array" in {
+    val qG = GQuery
+      .newBuilder()
+      .addKind(KindExpression.newBuilder().setName("Group"))
+      .setFilter(
+        Filter
+          .newBuilder()
+          .setPropertyFilter(
+            PropertyFilter
+              .newBuilder()
+              .setOp(Operator.EQUAL)
+              .setProperty(
+                PropertyReference.newBuilder().setName("members.name")
+              )
+              .setValue(
+                Value.newBuilder().setStringValue("Sakura Minamoto").build()
+              )
+          )
+      )
+      .build()
+
+    case class Member(name: String)
+    case class Group(members: Seq[Member])
+    val qS = Query[Group]
+      .filter(_.members.exists(_.name == "Sakura Minamoto"))
       .builder()
       .build()
 

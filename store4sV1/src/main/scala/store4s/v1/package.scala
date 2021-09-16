@@ -5,7 +5,6 @@ import com.google.datastore.v1.Entity
 import com.google.datastore.v1.Filter
 import com.google.datastore.v1.Key
 import com.google.datastore.v1.PartitionId
-import com.google.datastore.v1.PropertyFilter.Operator
 
 import scala.language.implicitConversions
 import scala.reflect.runtime.universe._
@@ -70,11 +69,5 @@ package object v1 {
 
   implicit def booleanProperty2Filter(p: Query.Property[Boolean]): Filter = {
     p == true
-  }
-
-  implicit class PropertyWrapper[T](arr: Query.Property[Seq[T]]) {
-    def contains(t: T)(implicit enc: ValueEncoder[T]): Filter = {
-      Query.Property[T](arr.name).createFilter(Operator.EQUAL, t)
-    }
   }
 }

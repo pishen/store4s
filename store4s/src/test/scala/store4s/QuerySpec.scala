@@ -82,7 +82,7 @@ class QuerySpec extends AnyFlatSpec with MockFactory {
     assert(qG == qS)
   }
 
-  it should "support array contains" in {
+  it should "support array exists" in {
     val qG = GQuery
       .newEntityQueryBuilder()
       .setKind("Task")
@@ -96,8 +96,46 @@ class QuerySpec extends AnyFlatSpec with MockFactory {
 
     case class Task(tag: Seq[String])
     val qS = Query[Task]
-      .filter(_.tag.contains("fun"))
-      .filter(_.tag.contains("programming"))
+      .filter(_.tag.exists(_ == "fun"))
+      .filter(_.tag.exists(_ == "programming"))
+      .builder()
+      .build()
+
+    assert(qG == qS)
+  }
+
+  it should "support nested entity" in {
+    val qG = GQuery
+      .newEntityQueryBuilder()
+      .setKind("Zombie")
+      .setFilter(
+        PropertyFilter.eq("hometown.city", "Saga")
+      )
+      .build()
+
+    case class Hometown(country: String, city: String)
+    case class Zombie(name: String, hometown: Hometown)
+    val qS = Query[Zombie]
+      .filter(_.hometown.city == "Saga")
+      .builder()
+      .build()
+
+    assert(qG == qS)
+  }
+
+  it should "support exists for entity array" in {
+    val qG = GQuery
+      .newEntityQueryBuilder()
+      .setKind("Group")
+      .setFilter(
+        PropertyFilter.eq("members.name", "Sakura Minamoto")
+      )
+      .build()
+
+    case class Member(name: String)
+    case class Group(members: Seq[Member])
+    val qS = Query[Group]
+      .filter(_.members.exists(_.name == "Sakura Minamoto"))
       .builder()
       .build()
 

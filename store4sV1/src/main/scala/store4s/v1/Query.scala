@@ -75,14 +75,54 @@ object Query {
     def desc: PropertyOrder = createOrder(Direction.DESCENDING)
   }
 
+  case class ArrayProperty[P](p: P) {
+    def exists(f: P => Filter): Filter = f(p)
+  }
+
   def apply[T]: Any = macro impl[T]
 
   def impl[T: c.WeakTypeTag](c: Context) = {
     import c.universe._
-    val typeName = weakTypeOf[T].typeSymbol.name.toString()
-    val defs = weakTypeOf[T].members.toSeq.filterNot(_.isMethod).map { s =>
-      val name = s.name.toString().trim()
-      q"val ${TermName(name)} = Query.Property[${s.info}]($name)"
+    val rootType = weakTypeOf[T]
+    val kind = rootType.typeSymbol.name.toString()
+
+    def getCaseMethods(t: Type) = t.members.collect {
+      case m: MethodSymbol if m.isCaseAccessor => m
+    }.toList
+
+    def isCaseClass(t: Type) = t.typeSymbol.asClass.isCaseClass
+
+    def makeTrait(t: Type, outerName: String) = {
+      val defs = getCaseMethods(t).map { p =>
+        val fullName = outerName + "." + p.name.toString()
+        q"val ${p.name} = Query.Property[${p.returnType}](${fullName})"
+      }
+      val traitName = TypeName(outerName.capitalize)
+      (traitName, q"trait ${traitName} { ..$defs }")
+    }
+
+    val defs = getCaseMethods(rootType).flatMap { p =>
+      if (isCaseClass(p.returnType)) {
+        val (traitName, traitDef) = makeTrait(p.returnType, p.name.toString())
+        Seq(traitDef, q"val ${p.name} = new ${traitName} {}")
+      } else if (p.returnType.typeConstructor.toString() == "Seq") {
+        val elemType = p.returnType.typeArgs.head
+        if (isCaseClass(elemType)) {
+          val (traitName, traitDef) = makeTrait(elemType, p.name.toString())
+          Seq(
+            traitDef,
+            q"val ${p.name} = Query.ArrayProperty(new ${traitName} {})"
+          )
+        } else {
+          Seq(
+            q"val ${p.name} = Query.ArrayProperty(Query.Property[${elemType}](${p.name.toString()}))"
+          )
+        }
+      } else {
+        Seq(
+          q"val ${p.name} = Query.Property[${p.returnType}](${p.name.toString()})"
+        )
+      }
     }
 
     q"""
@@ -90,7 +130,7 @@ object Query {
         ..$defs
       }
       Query[Selector](
-        $typeName,
+        $kind,
         new Selector {}
       )
     """
