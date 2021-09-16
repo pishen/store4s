@@ -98,7 +98,7 @@ val r4: Seq[Zombie] = q.run.getRights
 
 Use `getRights` to decode the Entities and throw Exceptions if any decoding failed.
 
-There's also a `contains` function for [array type values](https://cloud.google.com/datastore/docs/concepts/queries#multiple_equality_filters):
+For querying on [array type values](https://cloud.google.com/datastore/docs/concepts/queries#multiple_equality_filters), which corresponds to `Seq`, an `exists` function is available:
 ```scala
 import store4s._
 case class Task(tags: Seq[String])
@@ -106,8 +106,21 @@ case class Task(tags: Seq[String])
 implicit val datastore = Datastore.defaultInstance
 
 Query[Task]
-  .filter(_.tags.contains("Scala"))
-  .filter(_.tags.contains("rocks"))
+  .filter(_.tags.exists(_ == "Scala"))
+  .filter(_.tags.exists(_ == "rocks"))
+  .run
+```
+
+For querying on the properties of embedded entity (which can be referred using `.`):
+```scala
+import store4s._
+case class Hometown(country: String, city: String)
+case class Zombie(name: String, hometown: Hometown)
+
+implicit val datastore = Datastore.defaultInstance
+
+Query[Zombie]
+  .filter(_.hometown.city == "Saga")
   .run
 ```
 
