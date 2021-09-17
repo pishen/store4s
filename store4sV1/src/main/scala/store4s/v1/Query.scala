@@ -90,7 +90,11 @@ object Query {
       case m: MethodSymbol if m.isCaseAccessor => m
     }.toList
 
-    def isCaseClass(t: Type) = t.typeSymbol.asClass.isCaseClass
+    def isCaseClass(t: Type) = {
+      // The isCaseClass method on ClassSymbol still has some problems, use a workaround here
+      // https://stackoverflow.com/questions/12377046
+      t.baseClasses.exists(_.name.toString() == "Product")
+    }
 
     def makeTrait(t: Type, outerName: String) = {
       val defs = getCaseMethods(t).map { p =>
