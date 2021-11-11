@@ -34,7 +34,7 @@ object ValueDecoder {
   implicit val bytesDecoder = blobDecoder.map(_.toByteArray())
   implicit val booleanDecoder =
     create[Boolean](_.asInstanceOf[BooleanValue].get())
-  implicit val doubleDecoder = create(_.asInstanceOf[DoubleValue].get())
+  implicit val doubleDecoder = create[Double](_.asInstanceOf[DoubleValue].get())
   implicit def entityDecoder[T](implicit decoder: EntityDecoder[T]) =
     new ValueDecoder[T] {
       def decode(v: Value[_]) = Try(v.asInstanceOf[EntityValue]).toEither
