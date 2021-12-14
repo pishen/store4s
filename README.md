@@ -35,19 +35,23 @@ val z2 = Zombie(2, "Saki Nikaido", true).asEntity(2)
 ```
 The basic data types, `Seq`, `Option`, and nested case classes are supported.
 
+### Custom types
 To support custom types, one can create a `ValueEncoder` from an existing `ValueEncoder` using `contramap`:
 ```scala
 val enc: ValueEncoder[LocalDate] =
   ValueEncoder.stringEncoder.contramap[LocalDate](_.toString)
 ```
 
+### Interact with Datastore
 To insert, upsert, or update the entity into datastore:
 ```scala
 datastore.add(z6)
 datastore.put(z1)
 datastore.update(z2)
 ```
+(Note that these operations are not supported in `store4s-v1`)
 
+### Exclude from indexes
 To exclude properties from indexes, use the `excludeFromIndexes` function from `EntityEncoder`:
 ```scala
 implicit val enc = EntityEncoder[Zombie].excludeFromIndexes("name", "girl")
