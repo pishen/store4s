@@ -5,47 +5,62 @@ import shapeless._
 import shapeless.labelled._
 
 import scala.jdk.CollectionConverters._
+import scala.language.existentials
 
 trait ValueEncoder[T] { self =>
-  def encode(t: T): Value[_]
+  def builder(t: T): ValueBuilder[_, _, _]
+
+  def encode(t: T): Value[_] = builder(t).build()
 
   def contramap[A](f: A => T) = new ValueEncoder[A] {
-    def encode(a: A) = self.encode(f(a))
+    def builder(a: A) = self.builder(f(a))
   }
 }
 
 object ValueEncoder {
   def apply[T](implicit enc: ValueEncoder[T]) = enc
 
-  def create[T](f: T => Value[_]) = new ValueEncoder[T] {
-    def encode(t: T) = f(t)
+  def create[T](f: T => ValueBuilder[_, _, _]) = new ValueEncoder[T] {
+    def builder(t: T) = f(t)
   }
 
-  implicit val blobEncoder = create(BlobValue.of)
+  implicit val blobEncoder = create(BlobValue.newBuilder)
   implicit val bytesEncoder = blobEncoder.contramap[Array[Byte]](Blob.copyFrom)
-  implicit val booleanEncoder = create(BooleanValue.of)
-  implicit val doubleEncoder = create(DoubleValue.of)
+  implicit val booleanEncoder = create(BooleanValue.newBuilder)
+  implicit val doubleEncoder = create(DoubleValue.newBuilder)
   implicit def entityEncoder[T](implicit encoder: EntityEncoder[T]) =
     create[T] { obj =>
-      EntityValue.of(encoder.encodeEntity(obj, FullEntity.newBuilder()).build())
+      EntityValue.newBuilder(
+        encoder.encodeEntity(obj, FullEntity.newBuilder()).build()
+      )
     }
-  implicit val keyEncoder = create(KeyValue.of)
-  implicit val latLngEncoder = create(LatLngValue.of)
+  implicit val keyEncoder = create(KeyValue.newBuilder)
+  implicit val latLngEncoder = create(LatLngValue.newBuilder)
   implicit def seqEncoder[T](implicit ve: ValueEncoder[T]) =
-    create[Seq[T]](seq => ListValue.of(seq.map(t => ve.encode(t)).asJava))
+    create[Seq[T]](seq =>
+      ListValue.newBuilder().set(seq.map(t => ve.encode(t)).asJava)
+    )
   implicit def optionEncoder[T](implicit ve: ValueEncoder[T]) =
     create[Option[T]] {
-      case Some(t) => ve.encode(t)
-      case None    => NullValue.of()
+      case Some(t) => ve.builder(t)
+      case None    => NullValue.newBuilder()
     }
-  implicit val intEncoder = create((i: Int) => LongValue.of(i.toLong))
-  implicit val longEncoder = create(LongValue.of)
-  implicit val stringEncoder = create(StringValue.of)
-  implicit val timestampEncoder = create(TimestampValue.of)
+  implicit val intEncoder = create((i: Int) => LongValue.newBuilder(i.toLong))
+  implicit val longEncoder = create(LongValue.newBuilder)
+  implicit val stringEncoder = create(StringValue.newBuilder)
+  implicit val timestampEncoder = create(TimestampValue.newBuilder)
 }
 
-trait EntityEncoder[A] {
+trait EntityEncoder[A] { self =>
+  val excludedProperties: Set[String] = Set.empty
+
   def encodeEntity[B <: BaseEntity.Builder[_, B]](obj: A, eb: B): B
+
+  def excludeFromIndexes(properties: String*) = new EntityEncoder[A] {
+    override val excludedProperties: Set[String] = properties.toSet
+    def encodeEntity[B <: BaseEntity.Builder[_, B]](obj: A, eb: B): B =
+      self.encodeEntity(obj, eb)
+  }
 }
 
 object EntityEncoder {
@@ -65,10 +80,12 @@ object EntityEncoder {
         eb: B
     ): B = {
       val fieldName = witness.value.name
-      tEncoder.encodeEntity(
-        obj.tail,
-        eb.set(fieldName, hEncoder.encode(obj.head))
-      )
+      val value = if (excludedProperties.contains(fieldName)) {
+        hEncoder.builder(obj.head).setExcludeFromIndexes(true).build()
+      } else {
+        hEncoder.encode(obj.head)
+      }
+      tEncoder.encodeEntity(obj.tail, eb.set(fieldName, value))
     }
   }
 
