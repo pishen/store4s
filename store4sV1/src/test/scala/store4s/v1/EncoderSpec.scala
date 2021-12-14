@@ -124,6 +124,34 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
     assert(userG == userS)
   }
 
+  it should "support excludeFromIndexes" in {
+    val description =
+      "A high school girl and aspiring idol who dies in 2008 after being hit by a truck following a life filled with misfortune."
+
+    val zG = entityBuilder("Zombie")
+      .putProperties("number", Value.newBuilder().setIntegerValue(1).build())
+      .putProperties(
+        "name",
+        Value.newBuilder().setStringValue("Sakura Minamoto").build()
+      )
+      .putProperties(
+        "description",
+        Value
+          .newBuilder()
+          .setStringValue(description)
+          .setExcludeFromIndexes(true)
+          .build()
+      )
+      .build()
+
+    case class Zombie(number: Int, name: String, description: String)
+    implicit val encoder =
+      EntityEncoder[Zombie].excludeFromIndexes("description")
+    val zS = Zombie(1, "Sakura Minamoto", description).asEntity("entityName")
+
+    assert(zG == zS)
+  }
+
   "A v1.ValueEncoder" should "support contramap" in {
     val userG = entityBuilder("User")
       .putProperties(
