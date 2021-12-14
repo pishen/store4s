@@ -48,6 +48,14 @@ datastore.put(z1)
 datastore.update(z2)
 ```
 
+To exclude properties from indexes, use the `excludeFromIndexes` function from `EntityEncoder`:
+```scala
+implicit val enc = EntityEncoder[Zombie].excludeFromIndexes("name", "girl")
+
+// z1 will have 'name' and 'girl' properties excluded
+val z1 = Zombie(1, "Sakura Minamoto", true).asEntity("heroine")
+```
+
 ## Decoding
 Get an entity from datastore:
 ```scala
