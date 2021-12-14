@@ -3,6 +3,7 @@ package store4s
 import com.google.cloud.datastore.Entity
 import com.google.cloud.datastore.FullEntity
 import com.google.cloud.datastore.KeyFactory
+import com.google.cloud.datastore.StringValue
 import com.google.cloud.datastore.{Datastore => GDatastore}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.OneInstancePerTest
@@ -82,6 +83,28 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest with MockFactory {
     case class Hometown(country: String, region: String, city: String)
     case class Zombie(name: String, hometown: Hometown)
     val zS = Zombie("Sakura", Hometown("Japan", "Kyushu", "Saga")).asEntity
+
+    assert(zG == zS)
+  }
+
+  it should "support excludeFromIndexes" in {
+    val description =
+      "A high school girl and aspiring idol who dies in 2008 after being hit by a truck following a life filled with misfortune."
+
+    val zG = Entity
+      .newBuilder(keyFactory.setKind("Zombie").newKey("heroine"))
+      .set("number", 1)
+      .set("name", "Sakura Minamoto")
+      .set(
+        "description",
+        StringValue.newBuilder(description).setExcludeFromIndexes(true).build()
+      )
+      .build()
+
+    case class Zombie(number: Int, name: String, description: String)
+    implicit val encoder =
+      EntityEncoder[Zombie].excludeFromIndexes("description")
+    val zS = Zombie(1, "Sakura Minamoto", description).asEntity("heroine")
 
     assert(zG == zS)
   }
