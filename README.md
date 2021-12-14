@@ -56,6 +56,12 @@ implicit val enc = EntityEncoder[Zombie].excludeFromIndexes("name", "girl")
 val z1 = Zombie(1, "Sakura Minamoto", true).asEntity("heroine")
 ```
 
+The property names will be checked in compile-time, hence preventing user from entering a wrong property:
+```scala
+// Will get a compile error since 'nam' is not a member of Zombie
+val enc = EntityEncoder[Zombie].excludeFromIndexes("nam")
+```
+
 ## Decoding
 Get an entity from datastore:
 ```scala
