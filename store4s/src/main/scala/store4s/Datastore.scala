@@ -11,7 +11,7 @@ import com.google.cloud.datastore.{Datastore => GDatastore}
 import scala.jdk.CollectionConverters._
 import scala.reflect.runtime.universe._
 
-case class Datastore(underlying: GDatastore) {
+case class Datastore(underlying: GDatastore, typeIdentifier: String = "_type") {
   def keyFactory[A: WeakTypeTag] = underlying
     .newKeyFactory()
     .setKind(weakTypeOf[A].typeSymbol.name.toString())

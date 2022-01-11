@@ -38,7 +38,7 @@ object ValueDecoder {
   implicit def entityDecoder[T](implicit decoder: EntityDecoder[T]) =
     new ValueDecoder[T] {
       def decode(v: Value[_]) = Try(v.asInstanceOf[EntityValue]).toEither
-        .flatMap(v => decoder.decodeEntity(v.get()))
+        .flatMap(v => decoder.decode(v.get()))
     }
   implicit val keyDecoder = create(_.asInstanceOf[KeyValue].get())
   implicit val latLngDecoder = create(_.asInstanceOf[LatLngValue].get())
@@ -64,7 +64,7 @@ object ValueDecoder {
 }
 
 trait EntityDecoder[A] {
-  def decodeEntity(e: FullEntity[_]): Either[Throwable, A]
+  def decode(e: FullEntity[_]): Either[Throwable, A]
 }
 
 object EntityDecoder {
@@ -72,7 +72,7 @@ object EntityDecoder {
 
   def create[A](f: FullEntity[_] => Either[Throwable, A]) =
     new EntityDecoder[A] {
-      def decodeEntity(e: FullEntity[_]) = f(e)
+      def decode(e: FullEntity[_]) = f(e)
     }
 
   implicit val hnilDecoder = create[HNil](_ => Right(HNil))
@@ -93,7 +93,7 @@ object EntityDecoder {
           Try(e.getValue[Value[_]](fieldName)).toEither
         }
       h <- hDecoder.decode(v)
-      t <- tDecoder.decodeEntity(e)
+      t <- tDecoder.decode(e)
     } yield {
       field[K](h) :: t
     }
@@ -103,6 +103,27 @@ object EntityDecoder {
       generic: LabelledGeneric.Aux[A, R],
       decoder: Lazy[EntityDecoder[R]]
   ) = create[A] { e =>
-    decoder.value.decodeEntity(e).map(generic.from)
+    decoder.value.decode(e).map(generic.from)
+  }
+
+  implicit val cnilDecoder = create[CNil] { e =>
+    throw new Exception("No matching type for " + e)
+  }
+
+  implicit def coproductDecoder[K <: Symbol, H, T <: Coproduct](implicit
+      witness: Witness.Aux[K],
+      hDecoder: Lazy[EntityDecoder[H]],
+      tDecoder: EntityDecoder[T],
+      ds: Datastore
+  ) = create[FieldType[K, H] :+: T] { e =>
+    val typeName = witness.value.name
+    Try(e.getString(ds.typeIdentifier)).toEither
+      .flatMap { name =>
+        if (name == typeName) {
+          hDecoder.value.decode(e).map(h => Inl(field[K](h)))
+        } else {
+          tDecoder.decode(e).map(t => Inr(t))
+        }
+      }
   }
 }

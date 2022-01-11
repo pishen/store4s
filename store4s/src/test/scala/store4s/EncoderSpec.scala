@@ -109,6 +109,24 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest with MockFactory {
     assert(zG == zS)
   }
 
+  it should "support ADT" in {
+    sealed trait Member
+    case class Zombie(number: Int, name: String, died: String) extends Member
+    case class Human(number: Int, name: String) extends Member
+
+    val hG = FullEntity
+      .newBuilder(keyFactory.setKind("Member").newKey())
+      .set("number", 7)
+      .set("name", "Maimai Yuzuriha")
+      .set("_type", "Human")
+      .build()
+
+    val member: Member = Human(7, "Maimai Yuzuriha")
+    val hS = member.asEntity
+
+    assert(hG == hS)
+  }
+
   "A ValueEncoder" should "support contramap" in {
     val zG = FullEntity
       .newBuilder(keyFactory.setKind("Zombie").newKey())

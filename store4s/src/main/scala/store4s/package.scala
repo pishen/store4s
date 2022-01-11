@@ -1,5 +1,7 @@
 import com.google.cloud.datastore.Entity
 import com.google.cloud.datastore.FullEntity
+import com.google.cloud.datastore.IncompleteKey
+import com.google.cloud.datastore.Key
 import com.google.cloud.datastore.StructuredQuery.CompositeFilter
 import com.google.cloud.datastore.StructuredQuery.Filter
 
@@ -7,28 +9,30 @@ import scala.language.implicitConversions
 import scala.reflect.runtime.universe._
 
 package object store4s {
-  implicit class EntityEncoderOps[A: WeakTypeTag](obj: A) {
-    def asEntity(implicit encoder: EntityEncoder[A], ds: Datastore) = encoder
-      .encodeEntity(obj, FullEntity.newBuilder(ds.keyFactory[A].newKey()))
-      .build()
+  implicit class EntityEncoderOps[A: WeakTypeTag](obj: A)(implicit
+      encoder: EntityEncoder[A],
+      ds: Datastore
+  ) {
+    def asEntity: FullEntity[IncompleteKey] = encoder
+      .encode(obj, Some(ds.keyFactory[A].newKey()), Set.empty[String])
 
-    def asEntity(name: String)(implicit
-        encoder: EntityEncoder[A],
-        ds: Datastore
-    ) = encoder
-      .encodeEntity(obj, Entity.newBuilder(ds.keyFactory[A].newKey(name)))
-      .build()
+    def asEntity(name: String): Entity = {
+      val fullEntity = asEntity
+      Entity
+        .newBuilder(Key.newBuilder(fullEntity.getKey, name).build(), fullEntity)
+        .build()
+    }
 
-    def asEntity(id: Long)(implicit
-        encoder: EntityEncoder[A],
-        ds: Datastore
-    ) = encoder
-      .encodeEntity(obj, Entity.newBuilder(ds.keyFactory[A].newKey(id)))
-      .build()
+    def asEntity(id: Long): Entity = {
+      val fullEntity = asEntity
+      Entity
+        .newBuilder(Key.newBuilder(fullEntity.getKey, id).build(), fullEntity)
+        .build()
+    }
   }
 
   def decodeEntity[T](e: FullEntity[_])(implicit decoder: EntityDecoder[T]) = {
-    decoder.decodeEntity(e)
+    decoder.decode(e)
   }
 
   implicit class FilterWrapper(left: Filter) {

@@ -143,3 +143,51 @@ Query[Zombie]
 ```
 
 Check the [testing code](store4s/src/test/scala/store4s/QuerySpec.scala) for more supported features.
+
+## ADT (Algebraic Data Types)
+
+Support for encoding/decoding ADT is achieved by adding a property named `_type` into entities. When encoding a trait like this:
+
+```scala
+sealed trait Member
+case class Zombie(name: String) extends Member
+case class Human(name: String) extends Member
+
+val member: Member = Human("Maimai Yuzuriha")
+
+member.asEntity
+```
+
+The result entity will be:
+
+```
+key {
+  path {
+    kind: "Member"
+  }
+}
+properties {
+  key: "_type"
+  value {
+    string_value: "Human"
+  }
+}
+properties {
+  key: "name"
+  value {
+    string_value: "Maimai Yuzuriha"
+  }
+}
+```
+
+Which can then be decoded using
+
+```scala
+decodeEntity[Member]
+```
+
+The property name `_type` can be configured using `typeIdentifier` in `Datastore`:
+
+```scala
+implicit val ds = Datastore.defaultInstance.copy(typeIdentifier = "typeName")
+```

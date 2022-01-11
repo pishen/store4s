@@ -4,13 +4,18 @@ import com.google.cloud.datastore.DatastoreException
 import com.google.cloud.datastore.Entity
 import com.google.cloud.datastore.FullEntity
 import com.google.cloud.datastore.KeyFactory
+import com.google.cloud.datastore.{Datastore => GDatastore}
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 
 import java.time.LocalDate
 
-class DecoderSpec extends AnyFlatSpec with EitherValues {
+class DecoderSpec extends AnyFlatSpec with EitherValues with MockFactory {
   val keyFactory = new KeyFactory("store4s")
+
+  val mockGDatastore = mock[GDatastore]
+  implicit val ds = Datastore(mockGDatastore)
 
   "An EntityDecoder" should "decode Entity into case class" in {
     val zG = Entity
@@ -87,6 +92,21 @@ class DecoderSpec extends AnyFlatSpec with EitherValues {
     val zS = Zombie("Sakura", Hometown("Japan", "Kyushu", "Saga"))
 
     assert(decodeEntity[Zombie](zG) == Right(zS))
+  }
+
+  it should "support ADT" in {
+    sealed trait Member
+    case class Zombie(number: Int, name: String, died: String) extends Member
+    case class Human(number: Int, name: String) extends Member
+
+    val hG = FullEntity
+      .newBuilder()
+      .set("number", 7)
+      .set("name", "Maimai Yuzuriha")
+      .set("_type", "Human")
+      .build()
+
+    assert(decodeEntity[Member](hG) == Right(Human(7, "Maimai Yuzuriha")))
   }
 
   "A ValueDecoder" should "support map" in {

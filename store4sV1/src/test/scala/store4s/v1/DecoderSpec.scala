@@ -13,6 +13,8 @@ import java.time.LocalDate
 import scala.jdk.CollectionConverters._
 
 class DecoderSpec extends AnyFlatSpec with EitherValues {
+  implicit val datastore = Datastore("store4s")
+
   def entityBuilder(kind: String) = Entity
     .newBuilder()
     .setKey(
@@ -144,6 +146,27 @@ class DecoderSpec extends AnyFlatSpec with EitherValues {
     val userS = User("Sakura", Hometown("Japan", "Kyushu", "Saga"))
 
     assert(decodeEntity[User](userG) == Right(userS))
+  }
+
+  it should "support ADT" in {
+    sealed trait Member
+    case class Zombie(number: Int, name: String, died: String) extends Member
+    case class Human(number: Int, name: String) extends Member
+
+    val hG = Entity
+      .newBuilder()
+      .putProperties("number", Value.newBuilder().setIntegerValue(7).build())
+      .putProperties(
+        "name",
+        Value.newBuilder().setStringValue("Maimai Yuzuriha").build()
+      )
+      .putProperties(
+        "_type",
+        Value.newBuilder().setStringValue("Human").build()
+      )
+      .build()
+
+    assert(decodeEntity[Member](hG) == Right(Human(7, "Maimai Yuzuriha")))
   }
 
   "A v1.ValueDecoder" should "support map" in {
