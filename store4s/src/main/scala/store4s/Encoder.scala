@@ -32,9 +32,7 @@ object ValueEncoder {
   implicit val doubleEncoder = create(DoubleValue.newBuilder)
   implicit def entityEncoder[T](implicit encoder: EntityEncoder[T]) =
     create[T] { obj =>
-      EntityValue.newBuilder(
-        encoder.encodeEntity(obj, FullEntity.newBuilder()).build()
-      )
+      EntityValue.newBuilder(encoder.encode(obj, None, Set.empty[String]))
     }
   implicit val keyEncoder = create(KeyValue.newBuilder)
   implicit val latLngEncoder = create(LatLngValue.newBuilder)
@@ -54,26 +52,27 @@ object ValueEncoder {
 }
 
 trait EntityEncoder[A] { self =>
-  def encodeEntity[B <: BaseEntity.Builder[_, B]](
+  def builder(
       obj: A,
-      eb: B,
+      key: Option[IncompleteKey],
       excluded: Set[String]
-  ): B
+  ): FullEntity.Builder[IncompleteKey]
 
-  def encodeEntity[B <: BaseEntity.Builder[_, B]](obj: A, eb: B): B =
-    encodeEntity(obj, eb, Set.empty)
+  def encode(
+      obj: A,
+      key: Option[IncompleteKey],
+      excluded: Set[String]
+  ) = builder(obj, key, excluded).build()
 
   def excludeFromIndexes(properties: String*): EntityEncoder[A] =
     macro EntityEncoder.excludeFromIndexesImpl[A]
 
   def unsafeExcludeFromIndexes(properties: String*) = new EntityEncoder[A] {
-    def encodeEntity[B <: BaseEntity.Builder[_, B]](
+    def builder(
         obj: A,
-        eb: B,
+        key: Option[IncompleteKey],
         excluded: Set[String]
-    ): B = self.encodeEntity(obj, eb, excluded)
-    override def encodeEntity[B <: BaseEntity.Builder[_, B]](obj: A, eb: B): B =
-      self.encodeEntity(obj, eb, properties.toSet)
+    ) = self.builder(obj, key, excluded ++ properties.toSet)
   }
 }
 
@@ -81,11 +80,14 @@ object EntityEncoder {
   def apply[A](implicit enc: EntityEncoder[A]) = enc
 
   implicit val hnilEncoder = new EntityEncoder[HNil] {
-    def encodeEntity[B <: BaseEntity.Builder[_, B]](
+    def builder(
         obj: HNil,
-        eb: B,
+        key: Option[IncompleteKey],
         excluded: Set[String]
-    ): B = eb
+    ) = key match {
+      case Some(key) => FullEntity.newBuilder(key)
+      case None      => FullEntity.newBuilder()
+    }
   }
 
   implicit def hlistEncoder[K <: Symbol, H, T <: HList](implicit
@@ -93,18 +95,18 @@ object EntityEncoder {
       hEncoder: ValueEncoder[H],
       tEncoder: EntityEncoder[T]
   ) = new EntityEncoder[FieldType[K, H] :: T] {
-    def encodeEntity[B <: BaseEntity.Builder[_, B]](
+    def builder(
         obj: FieldType[K, H] :: T,
-        eb: B,
+        key: Option[IncompleteKey],
         excluded: Set[String]
-    ): B = {
+    ) = {
       val fieldName = witness.value.name
       val value = if (excluded.contains(fieldName)) {
         hEncoder.builder(obj.head).setExcludeFromIndexes(true).build()
       } else {
         hEncoder.encode(obj.head)
       }
-      tEncoder.encodeEntity(obj.tail, eb.set(fieldName, value), excluded)
+      tEncoder.builder(obj.tail, key, excluded).set(fieldName, value)
     }
   }
 
@@ -112,12 +114,40 @@ object EntityEncoder {
       generic: LabelledGeneric.Aux[A, R],
       encoder: Lazy[EntityEncoder[R]]
   ) = new EntityEncoder[A] {
-    def encodeEntity[B <: BaseEntity.Builder[_, B]](
+    def builder(
         obj: A,
-        eb: B,
+        key: Option[IncompleteKey],
         excluded: Set[String]
-    ): B = {
-      encoder.value.encodeEntity(generic.to(obj), eb, excluded)
+    ) = encoder.value.builder(generic.to(obj), key, excluded)
+  }
+
+  implicit val cnilEncoder = new EntityEncoder[CNil] {
+    def builder(
+        obj: CNil,
+        key: Option[IncompleteKey],
+        excluded: Set[String]
+    ): FullEntity.Builder[IncompleteKey] = throw new Exception("Inconceivable!")
+  }
+
+  implicit def coproductEncoder[K <: Symbol, H, T <: Coproduct](implicit
+      witness: Witness.Aux[K],
+      hEncoder: Lazy[EntityEncoder[H]],
+      tEncoder: EntityEncoder[T],
+      ds: Datastore
+  ) = new EntityEncoder[FieldType[K, H] :+: T] {
+    def builder(
+        obj: FieldType[K, H] :+: T,
+        key: Option[IncompleteKey],
+        excluded: Set[String]
+    ) = {
+      val typeName = witness.value.name
+      obj match {
+        case Inl(h) =>
+          hEncoder.value
+            .builder(h, key, excluded)
+            .set(ds.typeIdentifier, typeName)
+        case Inr(t) => tEncoder.builder(t, key, excluded)
+      }
     }
   }
 

@@ -6,9 +6,10 @@ import com.google.datastore.v1.Key
 import com.google.datastore.v1.PartitionId
 import com.google.datastore.v1.Value
 import com.google.protobuf.NullValue
-import java.time.LocalDate
 import org.scalatest.OneInstancePerTest
 import org.scalatest.flatspec.AnyFlatSpec
+
+import java.time.LocalDate
 import scala.jdk.CollectionConverters._
 
 class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
@@ -150,6 +151,29 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
     val zS = Zombie(1, "Sakura Minamoto", description).asEntity("entityName")
 
     assert(zG == zS)
+  }
+
+  it should "support ADT" in {
+    sealed trait Member
+    case class Zombie(number: Int, name: String, died: String) extends Member
+    case class Human(number: Int, name: String) extends Member
+
+    val hG = entityBuilder("Member")
+      .putProperties("number", Value.newBuilder().setIntegerValue(7).build())
+      .putProperties(
+        "name",
+        Value.newBuilder().setStringValue("Maimai Yuzuriha").build()
+      )
+      .putProperties(
+        "_type",
+        Value.newBuilder().setStringValue("Human").build()
+      )
+      .build()
+
+    val member: Member = Human(7, "Maimai Yuzuriha")
+    val hS = member.asEntity("entityName")
+
+    assert(hG == hS)
   }
 
   "A v1.ValueEncoder" should "support contramap" in {

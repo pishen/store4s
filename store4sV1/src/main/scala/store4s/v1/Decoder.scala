@@ -8,6 +8,7 @@ import shapeless._
 import shapeless.labelled._
 
 import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 trait ValueDecoder[T] { self =>
   def decode(v: Value): Either[Throwable, T]
@@ -43,7 +44,7 @@ object ValueDecoder {
   implicit def entityDecoder[T](implicit decoder: EntityDecoder[T]) =
     new ValueDecoder[T] {
       def decode(v: Value) = if (v.hasEntityValue()) {
-        Right(v).flatMap(v => decoder.decodeEntity(v.getEntityValue()))
+        Right(v).flatMap(v => decoder.decode(v.getEntityValue()))
       } else {
         Left(new Exception("Type is not matched: " + v))
       }
@@ -77,14 +78,14 @@ object ValueDecoder {
 }
 
 trait EntityDecoder[A] {
-  def decodeEntity(e: Entity): Either[Throwable, A]
+  def decode(e: Entity): Either[Throwable, A]
 }
 
 object EntityDecoder {
   def apply[A](implicit dec: EntityDecoder[A]) = dec
 
   def create[A](f: Entity => Either[Throwable, A]) = new EntityDecoder[A] {
-    def decodeEntity(e: Entity) = f(e)
+    def decode(e: Entity) = f(e)
   }
 
   implicit val hnilDecoder = create[HNil](_ => Right(HNil))
@@ -105,7 +106,7 @@ object EntityDecoder {
           Left(new IllegalArgumentException("Property not found: " + fieldName))
         }
       h <- hDecoder.decode(v)
-      t <- tDecoder.decodeEntity(e)
+      t <- tDecoder.decode(e)
     } yield {
       field[K](h) :: t
     }
@@ -115,6 +116,27 @@ object EntityDecoder {
       generic: LabelledGeneric.Aux[A, R],
       decoder: Lazy[EntityDecoder[R]]
   ) = create[A] { e =>
-    decoder.value.decodeEntity(e).map(generic.from)
+    decoder.value.decode(e).map(generic.from)
+  }
+
+  implicit val cnilDecoder = create[CNil] { e =>
+    throw new Exception("No matching type for " + e)
+  }
+
+  implicit def coproductDecoder[K <: Symbol, H, T <: Coproduct](implicit
+      witness: Witness.Aux[K],
+      hDecoder: Lazy[EntityDecoder[H]],
+      tDecoder: EntityDecoder[T],
+      ds: Datastore
+  ) = create[FieldType[K, H] :+: T] { e =>
+    val typeName = witness.value.name
+    Try(e.getPropertiesOrThrow(ds.typeIdentifier).getStringValue()).toEither
+      .flatMap { name =>
+        if (name == typeName) {
+          hDecoder.value.decode(e).map(h => Inl(field[K](h)))
+        } else {
+          tDecoder.decode(e).map(t => Inr(t))
+        }
+      }
   }
 }
