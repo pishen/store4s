@@ -5,17 +5,18 @@ import shapeless._
 import shapeless.labelled._
 
 import scala.jdk.CollectionConverters._
-import scala.language.existentials
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
 trait ValueEncoder[T] { self =>
-  def builder(t: T): ValueBuilder[_, _, _]
+  def builder(t: T, excludeFromIndexes: Boolean): ValueBuilder[_, _, _]
 
-  def encode(t: T): Value[_] = builder(t).build()
+  def encode(t: T, excludeFromIndexes: Boolean = false): Value[_] =
+    builder(t, excludeFromIndexes).build()
 
   def contramap[A](f: A => T) = new ValueEncoder[A] {
-    def builder(a: A) = self.builder(f(a))
+    def builder(a: A, excludeFromIndexes: Boolean): ValueBuilder[_, _, _] =
+      self.builder(f(a), excludeFromIndexes)
   }
 }
 
@@ -23,7 +24,8 @@ object ValueEncoder {
   def apply[T](implicit enc: ValueEncoder[T]) = enc
 
   def create[T](f: T => ValueBuilder[_, _, _]) = new ValueEncoder[T] {
-    def builder(t: T) = f(t)
+    def builder(t: T, excludeFromIndexes: Boolean): ValueBuilder[_, _, _] =
+      f(t).setExcludeFromIndexes(excludeFromIndexes)
   }
 
   implicit val blobEncoder = create(BlobValue.newBuilder)
@@ -37,12 +39,19 @@ object ValueEncoder {
   implicit val keyEncoder = create(KeyValue.newBuilder)
   implicit val latLngEncoder = create(LatLngValue.newBuilder)
   implicit def seqEncoder[T](implicit ve: ValueEncoder[T]) =
-    create[Seq[T]](seq =>
-      ListValue.newBuilder().set(seq.map(t => ve.encode(t)).asJava)
-    )
+    new ValueEncoder[Seq[T]] {
+      def builder(
+          seq: Seq[T],
+          excludeFromIndexs: Boolean
+      ): ValueBuilder[_, _, _] = {
+        ListValue
+          .newBuilder()
+          .set(seq.map(t => ve.encode(t, excludeFromIndexs)).asJava)
+      }
+    }
   implicit def optionEncoder[T](implicit ve: ValueEncoder[T]) =
     create[Option[T]] {
-      case Some(t) => ve.builder(t)
+      case Some(t) => ve.builder(t, false)
       case None    => NullValue.newBuilder()
     }
   implicit val intEncoder = create((i: Int) => LongValue.newBuilder(i.toLong))
@@ -101,11 +110,7 @@ object EntityEncoder {
         excluded: Set[String]
     ) = {
       val fieldName = witness.value.name
-      val value = if (excluded.contains(fieldName)) {
-        hEncoder.builder(obj.head).setExcludeFromIndexes(true).build()
-      } else {
-        hEncoder.encode(obj.head)
-      }
+      val value = hEncoder.encode(obj.head, excluded.contains(fieldName))
       tEncoder.builder(obj.tail, key, excluded).set(fieldName, value)
     }
   }

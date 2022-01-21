@@ -16,12 +16,14 @@ import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
 trait ValueEncoder[T] { self =>
-  def builder(t: T): Value.Builder
+  def builder(t: T, excludeFromIndexes: Boolean): Value.Builder
 
-  def encode(t: T) = builder(t).build()
+  def encode(t: T, excludeFromIndexes: Boolean = false) =
+    builder(t, excludeFromIndexes).build()
 
   def contramap[A](f: A => T) = new ValueEncoder[A] {
-    def builder(a: A) = self.builder(f(a))
+    def builder(a: A, excludeFromIndexes: Boolean) =
+      self.builder(f(a), excludeFromIndexes)
   }
 }
 
@@ -29,7 +31,8 @@ object ValueEncoder {
   def apply[T](implicit enc: ValueEncoder[T]) = enc
 
   def create[T](f: Value.Builder => T => Value.Builder) = new ValueEncoder[T] {
-    def builder(t: T) = f(Value.newBuilder())(t)
+    def builder(t: T, excludeFromIndexes: Boolean) =
+      f(Value.newBuilder())(t).setExcludeFromIndexes(excludeFromIndexes)
   }
 
   implicit val blobEncoder = create(_.setBlobValue)
@@ -45,17 +48,22 @@ object ValueEncoder {
   implicit val latLngEncoder =
     create[LatLng](vb => latlng => vb.setGeoPointValue(latlng))
   implicit def seqEncoder[T](implicit ve: ValueEncoder[T]) =
-    create[Seq[T]](vb =>
-      seq =>
-        vb.setArrayValue(
-          ArrayValue
-            .newBuilder()
-            .addAllValues(seq.map(t => ve.encode(t)).asJava)
-        )
-    )
+    new ValueEncoder[Seq[T]] {
+      def builder(seq: Seq[T], excludeFromIndexes: Boolean) = {
+        Value
+          .newBuilder()
+          .setArrayValue(
+            ArrayValue
+              .newBuilder()
+              .addAllValues(
+                seq.map(t => ve.encode(t, excludeFromIndexes)).asJava
+              )
+          )
+      }
+    }
   implicit def optionEncoder[T](implicit ve: ValueEncoder[T]) =
     create[Option[T]](vb => {
-      case Some(t) => ve.builder(t)
+      case Some(t) => ve.builder(t, false)
       case None    => vb.setNullValue(NullValue.NULL_VALUE)
     })
   implicit val intEncoder = create[Int](vb => i => vb.setIntegerValue(i.toLong))
@@ -99,11 +107,7 @@ object EntityEncoder {
       tEncoder: EntityEncoder[T]
   ) = create[FieldType[K, H] :: T] { (obj, key, excluded) =>
     val fieldName = witness.value.name
-    val value = if (excluded.contains(fieldName)) {
-      hEncoder.builder(obj.head).setExcludeFromIndexes(true).build()
-    } else {
-      hEncoder.encode(obj.head)
-    }
+    val value = hEncoder.encode(obj.head, excluded.contains(fieldName))
     tEncoder.builder(obj.tail, key, excluded).putProperties(fieldName, value)
   }
 
