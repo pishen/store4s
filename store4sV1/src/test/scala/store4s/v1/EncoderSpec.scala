@@ -153,6 +153,37 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
     assert(zG == zS)
   }
 
+  it should "support excludeFromIndexes on list value" in {
+    val list = Seq("A", "B", "C")
+    val arrayValue = ArrayValue
+      .newBuilder()
+      .addAllValues(
+        list
+          .map(e =>
+            Value
+              .newBuilder()
+              .setStringValue(e)
+              .setExcludeFromIndexes(true)
+              .build()
+          )
+          .asJava
+      )
+      .build()
+    val groupG = entityBuilder("Group")
+      .putProperties("id", Value.newBuilder().setIntegerValue(1).build())
+      .putProperties(
+        "members",
+        Value.newBuilder().setArrayValue(arrayValue).build()
+      )
+      .build()
+
+    case class Group(id: Int, members: Seq[String])
+    implicit val encoder = EntityEncoder[Group].excludeFromIndexes("members")
+    val groupS = Group(1, list).asEntity("entityName")
+
+    assert(groupG == groupS)
+  }
+
   it should "support ADT" in {
     sealed trait Member
     case class Zombie(number: Int, name: String, died: String) extends Member

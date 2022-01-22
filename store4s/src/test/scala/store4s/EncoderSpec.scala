@@ -10,6 +10,7 @@ import org.scalatest.OneInstancePerTest
 import org.scalatest.flatspec.AnyFlatSpec
 
 import java.time.LocalDate
+import com.google.cloud.datastore.ListValue
 
 class EncoderSpec extends AnyFlatSpec with OneInstancePerTest with MockFactory {
   val mockGDatastore = mock[GDatastore]
@@ -107,6 +108,28 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest with MockFactory {
     val zS = Zombie(1, "Sakura Minamoto", description).asEntity("heroine")
 
     assert(zG == zS)
+  }
+
+  it should "support excludeFromIndexes on list value" in {
+    val key = keyFactory.setKind("Group").newKey()
+    val groupG = FullEntity
+      .newBuilder(key)
+      .set("id", 1)
+      .set(
+        "members",
+        ListValue.of(
+          StringValue.newBuilder("A").setExcludeFromIndexes(true).build(),
+          StringValue.newBuilder("B").setExcludeFromIndexes(true).build(),
+          StringValue.newBuilder("C").setExcludeFromIndexes(true).build()
+        )
+      )
+      .build()
+
+    case class Group(id: Int, members: Seq[String])
+    implicit val encoder = EntityEncoder[Group].excludeFromIndexes("members")
+    val groupS = Group(1, Seq("A", "B", "C")).asEntity
+
+    assert(groupG == groupS)
   }
 
   it should "support ADT" in {
