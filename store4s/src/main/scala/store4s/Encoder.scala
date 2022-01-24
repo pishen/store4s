@@ -73,10 +73,10 @@ trait EntityEncoder[A] { self =>
       excluded: Set[String]
   ) = builder(obj, key, excluded).build()
 
-  def excludeFromIndexes(properties: String*): EntityEncoder[A] =
+  def excludeFromIndexes(selectors: A => Any*): EntityEncoder[A] =
     macro EntityEncoder.excludeFromIndexesImpl[A]
 
-  def unsafeExcludeFromIndexes(properties: String*) = new EntityEncoder[A] {
+  def excludeFromIndexesUnsafe(properties: String*) = new EntityEncoder[A] {
     def builder(
         obj: A,
         key: Option[IncompleteKey],
@@ -156,29 +156,13 @@ object EntityEncoder {
     }
   }
 
-  def excludeFromIndexesImpl[A: c.WeakTypeTag](c: Context)(
-      properties: c.Expr[String]*
-  ) = {
+  def excludeFromIndexesImpl[A](c: Context)(selectors: c.Expr[A => Any]*) = {
     import c.universe._
 
-    val typeMembers = weakTypeOf[A].members.collect {
-      case m: MethodSymbol if m.isCaseAccessor => m.name.toString()
-    }.toSet
-
-    val propertyNames = properties.map(_.tree).map {
-      case Literal(Constant(s: String)) => s
-      case _ =>
-        c.abort(c.enclosingPosition, "properties must be string literals.")
+    val names = selectors.map(_.tree).map { case q"_.$name" =>
+      name.toString()
     }
 
-    propertyNames.foreach { p =>
-      if (!typeMembers.contains(p))
-        c.abort(
-          c.enclosingPosition,
-          s"${p} is not a member of ${weakTypeOf[A]}"
-        )
-    }
-
-    q"""${c.prefix}.unsafeExcludeFromIndexes(..${properties})"""
+    q"""${c.prefix}.excludeFromIndexesUnsafe(..${names})"""
   }
 }

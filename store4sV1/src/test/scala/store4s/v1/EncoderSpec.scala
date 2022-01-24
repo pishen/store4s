@@ -147,7 +147,7 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
 
     case class Zombie(number: Int, name: String, description: String)
     implicit val encoder =
-      EntityEncoder[Zombie].excludeFromIndexes("description")
+      EntityEncoder[Zombie].excludeFromIndexes(_.description)
     val zS = Zombie(1, "Sakura Minamoto", description).asEntity("entityName")
 
     assert(zG == zS)
@@ -178,7 +178,7 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
       .build()
 
     case class Group(id: Int, members: Seq[String])
-    implicit val encoder = EntityEncoder[Group].excludeFromIndexes("members")
+    implicit val encoder = EntityEncoder[Group].excludeFromIndexes(_.members)
     val groupS = Group(1, list).asEntity("entityName")
 
     assert(groupG == groupS)
