@@ -150,6 +150,19 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest with MockFactory {
     assert(hG == hS)
   }
 
+  it should "support asEntity(A => B)" in {
+    val zG = Entity
+      .newBuilder(keyFactory.setKind("Zombie").newKey("(1,Sakura Minamoto)"))
+      .set("number", 1)
+      .set("name", "Sakura Minamoto")
+      .build()
+
+    case class Zombie(number: Int, name: String)
+    val zS = Zombie(1, "Sakura Minamoto").asEntity(z => (z.number, z.name))
+
+    assert(zG == zS)
+  }
+
   "A ValueEncoder" should "support contramap" in {
     val zG = FullEntity
       .newBuilder(keyFactory.setKind("Zombie").newKey())

@@ -207,6 +207,37 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
     assert(hG == hS)
   }
 
+  it should "support asEntity(A => B)" in {
+    val zG = Entity
+      .newBuilder()
+      .setKey(
+        Key
+          .newBuilder()
+          .setPartitionId(
+            PartitionId
+              .newBuilder()
+              .setProjectId("store4s")
+          )
+          .addPath(
+            Key.PathElement
+              .newBuilder()
+              .setKind("Zombie")
+              .setName("(1,Sakura Minamoto)")
+          )
+      )
+      .putProperties("number", Value.newBuilder().setIntegerValue(1).build())
+      .putProperties(
+        "name",
+        Value.newBuilder().setStringValue("Sakura Minamoto").build()
+      )
+      .build()
+
+    case class Zombie(number: Int, name: String)
+    val zS = Zombie(1, "Sakura Minamoto").asEntity(z => (z.number, z.name))
+
+    assert(zG == zS)
+  }
+
   "A v1.ValueEncoder" should "support contramap" in {
     val userG = entityBuilder("User")
       .putProperties(

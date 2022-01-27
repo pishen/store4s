@@ -16,18 +16,23 @@ package object store4s {
     def asEntity: FullEntity[IncompleteKey] = encoder
       .encode(obj, Some(ds.keyFactory[A].newKey()), Set.empty[String])
 
+    def asEntity(key: Key): Entity = {
+      val entity = encoder.encode(obj, None, Set.empty[String])
+      Entity.newBuilder(key, entity).build()
+    }
+
     def asEntity(name: String): Entity = {
-      val fullEntity = asEntity
-      Entity
-        .newBuilder(Key.newBuilder(fullEntity.getKey, name).build(), fullEntity)
-        .build()
+      asEntity(ds.keyFactory[A].newKey(name))
     }
 
     def asEntity(id: Long): Entity = {
-      val fullEntity = asEntity
-      Entity
-        .newBuilder(Key.newBuilder(fullEntity.getKey, id).build(), fullEntity)
-        .build()
+      asEntity(ds.keyFactory[A].newKey(id))
+    }
+
+    def asEntity[B](f: A => B): Entity = f(obj) match {
+      case id: Int   => asEntity(id.toLong)
+      case id: Long  => asEntity(id)
+      case name: Any => asEntity(name.toString())
     }
   }
 

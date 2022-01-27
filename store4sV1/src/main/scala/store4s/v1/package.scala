@@ -36,6 +36,12 @@ package object v1 {
 
     def asEntity(id: Long) =
       encoder.encode(obj, Some(buildKey(_.setId(id))), Set.empty[String])
+
+    def asEntity[B](f: A => B): Entity = f(obj) match {
+      case id: Int   => asEntity(id.toLong)
+      case id: Long  => asEntity(id)
+      case name: Any => asEntity(name.toString())
+    }
   }
 
   def decodeEntity[T](e: Entity)(implicit decoder: EntityDecoder[T]) = {
