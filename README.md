@@ -24,14 +24,16 @@ import store4s._
 
 case class Zombie(number: Int, name: String, girl: Boolean)
 
-implicit val datastore = Datastore.defaultInstance
+implicit val ds = Datastore.defaultInstance
 
+// create an Entity without name/id
 val z6 = Zombie(6, "Lily Hoshikawa", false).asEntity
-
-// provide a name
+// create an Entity with name
 val z1 = Zombie(1, "Sakura Minamoto", true).asEntity("heroine")
-// provide an id
+// create an Entity with id
 val z2 = Zombie(2, "Saki Nikaido", true).asEntity(2)
+// create an Entity with case class property as name/id
+val z3 = Zombie(3, "Ai Mizuno", true).asEntity(_.name)
 ```
 The basic data types, `Seq`, `Option`, and nested case classes are supported.
 
@@ -45,9 +47,9 @@ val enc: ValueEncoder[LocalDate] =
 ### Interact with Datastore
 To insert, upsert, or update the entity into datastore:
 ```scala
-datastore.add(z6)
-datastore.put(z1)
-datastore.update(z2)
+ds.add(z6)
+ds.put(z1)
+ds.update(z2)
 ```
 (Note that these operations are not supported in `store4s-v1`)
 
@@ -94,7 +96,7 @@ A query can be built using the `Query` object:
 import store4s._
 case class Zombie(number: Int, name: String, girl: Boolean)
 
-implicit val datastore = Datastore.defaultInstance
+implicit val ds = Datastore.defaultInstance
 
 val q = Query[Zombie]
   .filter(_.girl)
@@ -115,7 +117,7 @@ For querying on [array type values](https://cloud.google.com/datastore/docs/conc
 import store4s._
 case class Task(tags: Seq[String])
 
-implicit val datastore = Datastore.defaultInstance
+implicit val ds = Datastore.defaultInstance
 
 Query[Task]
   .filter(_.tags.exists(_ == "Scala"))
@@ -129,7 +131,7 @@ import store4s._
 case class Hometown(country: String, city: String)
 case class Zombie(name: String, hometown: Hometown)
 
-implicit val datastore = Datastore.defaultInstance
+implicit val ds = Datastore.defaultInstance
 
 Query[Zombie]
   .filter(_.hometown.city == "Saga")
