@@ -15,6 +15,8 @@ case class Datastore(underlying: GDatastore, typeIdentifier: String = "_type") {
   def keyFactory[A: WeakTypeTag] = underlying
     .newKeyFactory()
     .setKind(weakTypeOf[A].typeSymbol.name.toString())
+  def allocateId[A: WeakTypeTag] =
+    underlying.allocateId(keyFactory[A].newKey()).getId()
 
   def add(entity: FullEntity[_]) = underlying.add(entity)
   def add(entities: Seq[FullEntity[_]]) = underlying.add(entities: _*)
