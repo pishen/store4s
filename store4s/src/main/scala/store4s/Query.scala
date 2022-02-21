@@ -15,7 +15,7 @@ import scala.language.experimental.macros
 import scala.reflect.macros.whitebox.Context
 
 case class Query[S, T: EntityDecoder](
-    kind: String,
+    typeName: String,
     selector: S,
     filters: Seq[Filter] = Seq.empty,
     orders: Seq[OrderBy] = Seq.empty,
@@ -23,10 +23,10 @@ case class Query[S, T: EntityDecoder](
     start: Option[Cursor] = None,
     end: Option[Cursor] = None
 ) {
-  def builder() = {
+  def builder()(implicit ds: Datastore) = {
     GQuery
       .newEntityQueryBuilder()
-      .setKind(kind)
+      .setKind(ds.naming.convert(typeName))
       .pure[Id]
       .map(b =>
         if (filters.nonEmpty) b.setFilter(filters.reduce(_ && _)) else b
@@ -75,7 +75,7 @@ object Query {
   def impl[T: c.WeakTypeTag](c: Context) = {
     import c.universe._
     val rootType = weakTypeOf[T]
-    val kind = rootType.typeSymbol.name.toString()
+    val typeName = rootType.typeSymbol.name.toString()
 
     def getCaseMethods(t: Type) = t.members.collect {
       case m: MethodSymbol if m.isCaseAccessor => m
@@ -125,7 +125,7 @@ object Query {
         ..$defs
       }
       Query[Selector, ${rootType}](
-        $kind,
+        $typeName,
         new Selector {}
       )
     """

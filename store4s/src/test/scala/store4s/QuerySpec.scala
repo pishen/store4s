@@ -7,11 +7,15 @@ import com.google.cloud.datastore.QueryResults
 import com.google.cloud.datastore.StructuredQuery.CompositeFilter
 import com.google.cloud.datastore.StructuredQuery.OrderBy
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter
+import com.google.cloud.datastore.{Datastore => GDatastore}
 import com.google.cloud.datastore.{Query => GQuery}
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.flatspec.AnyFlatSpec
 
 class QuerySpec extends AnyFlatSpec with MockFactory {
+  val mockGDatastore = mock[GDatastore]
+  implicit val ds = Datastore(mockGDatastore)
+
   "A Query" should "generate same Query as Google Cloud Java" in {
     val qG = GQuery
       .newEntityQueryBuilder()
@@ -160,15 +164,33 @@ class QuerySpec extends AnyFlatSpec with MockFactory {
       override def getMoreResults() = ???
     }
 
-    implicit val mockDatastore = mock[Datastore]
-    (mockDatastore.run _).expects(*).returning(results)
+    // define the run method again to resolve ScalaMock ambiguous issue
+    trait GDatastoreChild extends GDatastore {
+      override def run[T](query: GQuery[T]): QueryResults[T]
+    }
+    val mockGDatastore = mock[GDatastoreChild]
+    (mockGDatastore.run(_: GQuery[Entity])).expects(*).returning(results)
+    val ds = Datastore(mockGDatastore)
 
     case class User(id: Int)
     val res: Seq[User] = Query[User]
       .filter(_.id > 0)
-      .run
+      .run(ds)
       .getRights
 
     assert(res == Seq(1, 2, 3).map(id => User(id)))
+  }
+
+  it should "support snake_case naming" in {
+    val qG = GQuery
+      .newEntityQueryBuilder()
+      .setKind("zombie_member")
+      .build()
+
+    val snakeDS = Datastore(mockGDatastore, "_type", SnakeCase)
+    case class ZombieMember(name: String)
+    val qS = Query[ZombieMember].builder()(snakeDS).build()
+
+    assert(qG == qS)
   }
 }

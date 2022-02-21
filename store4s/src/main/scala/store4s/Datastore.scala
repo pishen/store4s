@@ -1,6 +1,7 @@
 package store4s
 
 import com.google.cloud.datastore.DatastoreOptions
+import com.google.cloud.datastore.DatastoreReader
 import com.google.cloud.datastore.Entity
 import com.google.cloud.datastore.EntityQuery
 import com.google.cloud.datastore.FullEntity
@@ -11,10 +12,14 @@ import com.google.cloud.datastore.{Datastore => GDatastore}
 import scala.jdk.CollectionConverters._
 import scala.reflect.runtime.universe._
 
-case class Datastore(underlying: GDatastore, typeIdentifier: String = "_type") {
+case class Datastore(
+    underlying: GDatastore,
+    typeIdentifier: String = "_type",
+    naming: Naming = CamelCase
+) {
   def keyFactory[A: WeakTypeTag] = underlying
     .newKeyFactory()
-    .setKind(weakTypeOf[A].typeSymbol.name.toString())
+    .setKind(naming.convert(weakTypeOf[A].typeSymbol.name.toString()))
   def allocateId[A: WeakTypeTag] =
     underlying.allocateId(keyFactory[A].newKey()).getId()
 
@@ -53,7 +58,7 @@ case class Datastore(underlying: GDatastore, typeIdentifier: String = "_type") {
   }
   def delete(keys: Key*) = underlying.delete(keys: _*)
   def update(entities: Entity*) = underlying.update(entities: _*)
-  def run(query: EntityQuery) = underlying.run(query, Seq.empty[ReadOption]: _*)
+  def run(query: EntityQuery) = (underlying: DatastoreReader).run(query)
 }
 
 object Datastore {
