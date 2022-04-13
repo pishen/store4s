@@ -1,6 +1,6 @@
 name := "store4s"
 
-ThisBuild / version := "0.11.0"
+ThisBuild / version := "0.11.1"
 ThisBuild / scalaVersion := "2.13.5"
 ThisBuild / crossScalaVersions := Seq("2.13.5", "2.12.13")
 
@@ -28,7 +28,7 @@ val commonSettings = Seq(
   libraryDependencies ++= Seq(
     "com.chuusai" %% "shapeless" % "2.3.7",
     "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.3",
-    "org.scala-lang" % "scala-reflect" % scalaVersion.value % Provided,
+    "org.scala-lang" % "scala-reflect" % scalaVersion.value,
     "org.typelevel" %% "cats-core" % "2.6.1",
     "org.scalamock" %% "scalamock" % "5.1.0" % Test,
     "org.scalatest" %% "scalatest" % "3.2.7" % Test
