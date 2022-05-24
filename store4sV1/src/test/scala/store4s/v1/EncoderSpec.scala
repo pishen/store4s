@@ -5,6 +5,7 @@ import com.google.datastore.v1.Entity
 import com.google.datastore.v1.Key
 import com.google.datastore.v1.PartitionId
 import com.google.datastore.v1.Value
+import com.google.datastore.v1.client.DatastoreOptions
 import com.google.protobuf.NullValue
 import org.scalatest.OneInstancePerTest
 import org.scalatest.flatspec.AnyFlatSpec
@@ -13,8 +14,9 @@ import java.time.LocalDate
 import scala.jdk.CollectionConverters._
 
 class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
+  val options = new DatastoreOptions.Builder().projectId("store4s").build()
+  implicit val datastore = Datastore(options)
 
-  implicit val datastore = Datastore("store4s")
   def entityBuilder(kind: String) = Entity
     .newBuilder()
     .setKey(

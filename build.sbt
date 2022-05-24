@@ -1,6 +1,6 @@
 name := "store4s"
 
-ThisBuild / version := "0.11.1"
+ThisBuild / version := "0.12.0"
 ThisBuild / scalaVersion := "2.13.5"
 ThisBuild / crossScalaVersions := Seq("2.13.5", "2.12.13")
 

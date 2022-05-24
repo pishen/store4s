@@ -2,6 +2,7 @@ package store4s.v1
 
 import cats.Id
 import cats.implicits._
+import com.google.datastore.v1.Entity
 import com.google.datastore.v1.Filter
 import com.google.datastore.v1.KindExpression
 import com.google.datastore.v1.PropertyFilter
@@ -9,6 +10,7 @@ import com.google.datastore.v1.PropertyFilter.Operator
 import com.google.datastore.v1.PropertyOrder
 import com.google.datastore.v1.PropertyOrder.Direction
 import com.google.datastore.v1.PropertyReference
+import com.google.datastore.v1.RunQueryResponse
 import com.google.datastore.v1.{Query => GQuery}
 import com.google.protobuf.ByteString
 import com.google.protobuf.Int32Value
@@ -17,7 +19,7 @@ import scala.jdk.CollectionConverters._
 import scala.language.experimental.macros
 import scala.reflect.macros.whitebox.Context
 
-case class Query[S](
+case class Query[S, T: EntityDecoder](
     kind: String,
     selector: S,
     filters: Seq[Filter] = Seq.empty,
@@ -46,6 +48,7 @@ case class Query[S](
   def take(n: Int) = this.copy(limit = Some(n))
   def startFrom(cursor: ByteString) = this.copy(start = Some(cursor))
   def endAt(cursor: ByteString) = this.copy(end = Some(cursor))
+  def run(implicit ds: Datastore) = Query.Result[T](ds.run(build()))
 }
 
 object Query {
@@ -77,6 +80,14 @@ object Query {
 
   case class ArrayProperty[P](p: P) {
     def exists(f: P => Filter): Filter = f(p)
+  }
+
+  case class Result[T: EntityDecoder](resp: RunQueryResponse) {
+    def getEntities: Seq[Entity] =
+      resp.getBatch().getEntityResultsList().asScala.map(_.getEntity()).toSeq
+    def getEithers = getEntities.map(decodeEntity[T])
+    def getRights = getEithers.map(_.toTry.get)
+    def getCursorAfter: ByteString = resp.getBatch().getEndCursor()
   }
 
   def apply[T]: Any = macro impl[T]
@@ -133,7 +144,7 @@ object Query {
       trait Selector {
         ..$defs
       }
-      Query[Selector](
+      Query[Selector, ${rootType}](
         $kind,
         new Selector {}
       )

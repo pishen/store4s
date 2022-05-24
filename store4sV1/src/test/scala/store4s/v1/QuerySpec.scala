@@ -1,6 +1,7 @@
 package store4s.v1
 
 import com.google.datastore.v1.CompositeFilter
+import com.google.datastore.v1.EntityResult
 import com.google.datastore.v1.Filter
 import com.google.datastore.v1.KindExpression
 import com.google.datastore.v1.PropertyFilter
@@ -8,11 +9,16 @@ import com.google.datastore.v1.PropertyFilter.Operator
 import com.google.datastore.v1.PropertyOrder
 import com.google.datastore.v1.PropertyOrder.Direction
 import com.google.datastore.v1.PropertyReference
-import com.google.datastore.v1.{Query => GQuery}
+import com.google.datastore.v1.QueryResultBatch
+import com.google.datastore.v1.RunQueryResponse
 import com.google.datastore.v1.Value
+import com.google.datastore.v1.client.DatastoreOptions
+import com.google.datastore.v1.{Query => GQuery}
 import com.google.protobuf.Int32Value
 import com.google.protobuf.Timestamp
 import org.scalatest.flatspec.AnyFlatSpec
+
+import scala.jdk.CollectionConverters._
 
 class QuerySpec extends AnyFlatSpec {
   val filter1 = Filter
@@ -236,5 +242,31 @@ class QuerySpec extends AnyFlatSpec {
       .build()
 
     assert(qG == qS)
+  }
+
+  it should "decode RunQueryResponse" in {
+    val options = new DatastoreOptions.Builder().projectId("store4s").build()
+    implicit val ds = Datastore(options)
+
+    case class User(id: Int)
+    val users = Seq(1, 2, 3).map(id => User(id))
+
+    val resp = RunQueryResponse
+      .newBuilder()
+      .setBatch(
+        QueryResultBatch
+          .newBuilder()
+          .addAllEntityResults(
+            users.map { user =>
+              EntityResult
+                .newBuilder()
+                .setEntity(user.asEntity(user.id.toLong))
+                .build()
+            }.asJava
+          )
+      )
+      .build()
+
+    assert(Query.Result[User](resp).getRights == users)
   }
 }
