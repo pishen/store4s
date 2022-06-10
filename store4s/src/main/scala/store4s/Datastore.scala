@@ -54,6 +54,21 @@ case class Datastore(underlying: GDatastore, typeIdentifier: String = "_type") {
   def delete(keys: Key*) = underlying.delete(keys: _*)
   def update(entities: Entity*) = underlying.update(entities: _*)
   def run(query: EntityQuery) = underlying.run(query, Seq.empty[ReadOption]: _*)
+
+  def transaction[B](f: Transaction => B) = {
+    val txn = underlying.newTransaction()
+    try {
+      val res = f(Transaction(txn, this))
+      txn.commit()
+      res
+    } catch {
+      case t: Throwable =>
+        if (txn.isActive()) {
+          txn.rollback()
+        }
+        throw t
+    }
+  }
 }
 
 object Datastore {

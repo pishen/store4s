@@ -51,7 +51,6 @@ ds.add(z6)
 ds.put(z1)
 ds.update(z2)
 ```
-(Note that these operations are not supported in `store4s-v1`)
 
 ### Exclude from indexes
 To exclude properties from indexes, use the `excludeFromIndexes` function from `EntityEncoder`:
@@ -187,3 +186,22 @@ The property name `_type` can be configured using `typeIdentifier` in `Datastore
 ```scala
 implicit val ds = Datastore.defaultInstance.copy(typeIdentifier = "typeName")
 ```
+
+## Transaction
+
+Use `transaction` to create a Transaction:
+
+```scala
+implicit val ds = Datastore.defaultInstance
+
+val zOpt = ds.transaction { tx =>
+  val zOpt = tx.getRight[Zombie]("heroine")
+  tx.add(z6)
+  tx.put(z1)
+  tx.update(z2)
+  tx.delete(key1)
+  zOpt
+}
+```
+
+The Transaction will be committed once the function is completed, or rollbacked if an Exception is thrown.
