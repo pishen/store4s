@@ -1,6 +1,5 @@
 name := "store4s"
 
-ThisBuild / version := "0.13.0"
 ThisBuild / scalaVersion := "2.13.5"
 ThisBuild / crossScalaVersions := Seq("2.13.5", "2.12.13")
 
@@ -61,12 +60,6 @@ ThisBuild / licenses += "Apache-2.0" -> url(
   "https://www.apache.org/licenses/LICENSE-2.0.html"
 )
 ThisBuild / homepage := Some(url("https://github.com/pishen/store4s"))
-ThisBuild / scmInfo := Some(
-  ScmInfo(
-    url("https://github.com/pishen/store4s"),
-    "scm:git@github.com:pishen/store4s.git"
-  )
-)
 ThisBuild / developers := List(
   Developer(
     id = "pishen",
@@ -75,12 +68,3 @@ ThisBuild / developers := List(
     url = url("https://github.com/pishen")
   )
 )
-ThisBuild / versionScheme := Some("early-semver")
-ThisBuild / publishTo := {
-  val nexus = "https://oss.sonatype.org/"
-  if (isSnapshot.value) {
-    Some("snapshots" at nexus + "content/repositories/snapshots")
-  } else {
-    Some("releases" at nexus + "service/local/staging/deploy/maven2")
-  }
-}
