@@ -3,6 +3,7 @@ package store4s
 import com.google.cloud.Timestamp
 import com.google.cloud.datastore.Entity
 import com.google.cloud.datastore.KeyFactory
+import com.google.cloud.datastore.NullValue
 import com.google.cloud.datastore.QueryResults
 import com.google.cloud.datastore.StructuredQuery.CompositeFilter
 import com.google.cloud.datastore.StructuredQuery.OrderBy
@@ -140,6 +141,36 @@ class QuerySpec extends AnyFlatSpec with MockFactory {
       .build()
 
     assert(qG == qS)
+  }
+
+  it should "support nullable value" in {
+    val qGNull = GQuery
+      .newEntityQueryBuilder()
+      .setKind("User")
+      .setFilter(
+        PropertyFilter.eq("name", NullValue.of())
+      )
+      .build()
+    val qGSome = GQuery
+      .newEntityQueryBuilder()
+      .setKind("User")
+      .setFilter(
+        PropertyFilter.eq("name", "Sakura Minamoto")
+      )
+      .build()
+
+    case class User(name: Option[String])
+    val qSNull = Query[User]
+      .filter(_.name == None)
+      .builder()
+      .build()
+    val qSSome = Query[User]
+      .filter(_.name == Some("Sakura Minamoto"))
+      .builder()
+      .build()
+
+    assert(qGNull == qSNull)
+    assert(qGSome == qSSome)
   }
 
   it should "decode QueryResults" in {
