@@ -15,6 +15,7 @@ import com.google.datastore.v1.Value
 import com.google.datastore.v1.client.DatastoreOptions
 import com.google.datastore.v1.{Query => GQuery}
 import com.google.protobuf.Int32Value
+import com.google.protobuf.NullValue
 import com.google.protobuf.Timestamp
 import org.scalatest.flatspec.AnyFlatSpec
 
@@ -242,6 +243,43 @@ class QuerySpec extends AnyFlatSpec {
       .build()
 
     assert(qG == qS)
+  }
+
+  it should "support nullable value" in {
+    def qG(v: Value) = GQuery
+      .newBuilder()
+      .addKind(KindExpression.newBuilder().setName("User"))
+      .setFilter(
+        Filter
+          .newBuilder()
+          .setPropertyFilter(
+            PropertyFilter
+              .newBuilder()
+              .setOp(Operator.EQUAL)
+              .setProperty(
+                PropertyReference.newBuilder().setName("name")
+              )
+              .setValue(v)
+          )
+      )
+      .build()
+    val qGNull =
+      qG(Value.newBuilder().setNullValue(NullValue.NULL_VALUE).build())
+    val qGSome =
+      qG(Value.newBuilder().setStringValue("Sakura Minamoto").build())
+
+    case class User(name: Option[String])
+    val qSNull = Query[User]
+      .filter(_.name == None)
+      .builder()
+      .build()
+    val qSSome = Query[User]
+      .filter(_.name == Some("Sakura Minamoto"))
+      .builder()
+      .build()
+
+    assert(qGNull == qSNull)
+    assert(qGSome == qSSome)
   }
 
   it should "decode RunQueryResponse" in {

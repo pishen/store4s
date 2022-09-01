@@ -102,9 +102,11 @@ object Query {
     }.toList
 
     def isCaseClass(t: Type) = {
-      // The isCaseClass method on ClassSymbol still has some problems, use a workaround here
+      // isCaseClass may not work correctly if not initialized first,
+      // which may cause error in nested Entity or array of Entities
       // https://stackoverflow.com/questions/12377046
-      t.baseClasses.exists(_.name.toString() == "Product")
+      { t.typeSymbol.asClass.typeSignature }
+      t.typeSymbol.asClass.isCaseClass
     }
 
     def makeTrait(t: Type, outerName: String) = {
