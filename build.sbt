@@ -68,3 +68,5 @@ ThisBuild / developers := List(
     url = url("https://github.com/pishen")
   )
 )
+// will cause warning when publishing if not set
+ThisBuild / versionScheme := Some("early-semver")
