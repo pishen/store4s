@@ -194,13 +194,16 @@ Use `transaction` to create a Transaction:
 ```scala
 implicit val ds = Datastore.defaultInstance
 
-val zOpt = ds.transaction { tx =>
-  val zOpt = tx.getRight[Zombie]("heroine")
+val zOpt = ds.transaction { implicit tx =>
   tx.add(z6)
   tx.put(z1)
   tx.update(z2)
   tx.delete(key1)
-  zOpt
+  val zOpt = tx.getRight[Zombie]("heroine")
+  val qRes = Query[Zombie]
+    .filter(_.hometown.city == "Saga")
+    .runTx
+  (zOpt, qRes)
 }
 ```
 
