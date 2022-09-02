@@ -38,13 +38,17 @@ case class Query[S, T: EntityDecoder](
       .map(b => start.fold(b)(c => b.setStartCursor(c)))
       .map(b => end.fold(b)(c => b.setEndCursor(c)))
   }
+  def build() = builder().build()
   def filter(f: S => Filter) = this.copy(filters = filters :+ f(selector))
   def sortBy(fs: S => OrderBy*) = this.copy(orders = fs.map(f => f(selector)))
   def take(n: Int) = this.copy(limit = Some(n))
   def startFrom(cursor: Cursor) = this.copy(start = Some(cursor))
   def endAt(cursor: Cursor) = this.copy(end = Some(cursor))
   def run(implicit ds: Datastore) = {
-    Query.Result[T](ds.run(builder().build()))
+    Query.Result[T](ds.run(build()))
+  }
+  def runTx(implicit tx: Transaction) = {
+    Query.Result[T](tx.run(build()))
   }
 }
 
