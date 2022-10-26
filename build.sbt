@@ -52,6 +52,18 @@ lazy val store4sV1 = project
     )
   )
 
+lazy val store4sAsync = project
+  .settings(
+    commonSettings,
+    name := "store4s-async",
+    libraryDependencies ++= Seq(
+      "com.softwaremill.sttp.client3" %% "core" % "3.5.2",
+      "com.google.auth" % "google-auth-library-oauth2-http" % "1.12.0",
+      "io.circe" %% "circe-generic" % "0.14.1" % Test,
+      "com.softwaremill.sttp.client3" %% "circe" % "3.5.2" % Test
+    )
+  )
+
 //prevent root project from running these tasks
 publish / skip := true
 
