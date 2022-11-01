@@ -13,17 +13,17 @@ case class LatLng(latitude: Double, longitude: Double)
 case class ArrayValue(values: Seq[Value])
 case class Value(
     excludeFromIndexes: Boolean,
-    nullValue: Option[String],
-    booleanValue: Option[Boolean],
-    integerValue: Option[String],
-    doubleValue: Option[Double],
-    timestampValue: Option[String],
-    keyValue: Option[Key],
-    stringValue: Option[String],
-    blobValue: Option[String],
-    geoPointValue: Option[LatLng],
-    entityValue: Option[Entity],
-    arrayValue: Option[ArrayValue]
+    nullValue: Option[String] = None,
+    booleanValue: Option[Boolean] = None,
+    integerValue: Option[String] = None,
+    doubleValue: Option[Double] = None,
+    timestampValue: Option[String] = None,
+    keyValue: Option[Key] = None,
+    stringValue: Option[String] = None,
+    blobValue: Option[String] = None,
+    geoPointValue: Option[LatLng] = None,
+    entityValue: Option[Entity] = None,
+    arrayValue: Option[ArrayValue] = None
 )
 case class Entity(key: Key, properties: Map[String, Value])
 case class Mutation(
