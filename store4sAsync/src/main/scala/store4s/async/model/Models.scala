@@ -25,7 +25,7 @@ case class Value(
     entityValue: Option[Entity] = None,
     arrayValue: Option[ArrayValue] = None
 )
-case class Entity(key: Key, properties: Map[String, Value])
+case class Entity(key: Option[Key], properties: Map[String, Value])
 case class Mutation(
     insert: Option[Entity],
     update: Option[Entity],

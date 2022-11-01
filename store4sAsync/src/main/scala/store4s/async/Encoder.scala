@@ -1,8 +1,13 @@
 package store4s.async
 
+import shapeless._
+import shapeless.labelled._
+
 import java.time.Instant
 import java.time.ZoneId
 import java.util.Base64
+import scala.language.experimental.macros
+import scala.reflect.macros.blackbox.Context
 
 import model._
 
@@ -59,6 +64,79 @@ object ValueEncoder {
     }
 }
 
-trait EntityEncoder[A] {
+trait EntityEncoder[A] { self =>
   def encode(obj: A, key: Option[Key], excluded: Set[String]): Entity
+
+  def excludeFromIndexes(selectors: A => Any*): EntityEncoder[A] =
+    macro EntityEncoder.excludeFromIndexesImpl[A]
+
+  def excludeFromIndexesUnsafe(properties: String*) = new EntityEncoder[A] {
+    def encode(obj: A, key: Option[Key], excluded: Set[String]) =
+      self.encode(obj, key, excluded ++ properties.toSet)
+  }
+}
+
+object EntityEncoder {
+  def apply[A](implicit enc: EntityEncoder[A]) = enc
+
+  def create[A](f: (A, Option[Key], Set[String]) => Entity) =
+    new EntityEncoder[A] {
+      def encode(obj: A, key: Option[Key], excluded: Set[String]): Entity =
+        f(obj, key, excluded)
+    }
+
+  implicit val hnilEncoder =
+    create[HNil]((_, key, _) => Entity(key, Map.empty[String, Value]))
+
+  implicit def hlistEncoder[K <: Symbol, H, T <: HList](implicit
+      witness: Witness.Aux[K],
+      hEncoder: ValueEncoder[H],
+      tEncoder: EntityEncoder[T]
+  ) = create[FieldType[K, H] :: T] { (obj, key, excluded) =>
+    val fieldName = witness.value.name
+    val value = hEncoder.encode(obj.head, excluded.contains(fieldName))
+    val entity = tEncoder.encode(obj.tail, key, excluded)
+    entity.copy(properties = entity.properties + (fieldName -> value))
+  }
+
+  implicit def genericEncoder[A, R](implicit
+      generic: LabelledGeneric.Aux[A, R],
+      encoder: Lazy[EntityEncoder[R]]
+  ) = create[A] { (obj, key, excluded) =>
+    encoder.value.encode(generic.to(obj), key, excluded)
+  }
+
+  implicit val cnilEncoder = create[CNil] { (_, _, _) =>
+    throw new Exception("Inconceivable!")
+  }
+
+  implicit def coproductEncoder[K <: Symbol, H, T <: Coproduct](implicit
+      witness: Witness.Aux[K],
+      hEncoder: Lazy[EntityEncoder[H]],
+      tEncoder: EntityEncoder[T],
+      typeIdentifier: TypeIdentifier
+  ) = create[FieldType[K, H] :+: T] { (obj, key, excluded) =>
+    val typeName = witness.value.name
+    obj match {
+      case Inl(h) =>
+        val entity = hEncoder.value.encode(h, key, excluded)
+        entity.copy(properties =
+          entity.properties + (typeIdentifier.fieldName -> Value(
+            false,
+            stringValue = Some(typeName)
+          ))
+        )
+      case Inr(t) => tEncoder.encode(t, key, excluded)
+    }
+  }
+
+  def excludeFromIndexesImpl[A](c: Context)(selectors: c.Expr[A => Any]*) = {
+    import c.universe._
+
+    val names = selectors.map(_.tree).map { case q"_.$name" =>
+      name.toString()
+    }
+
+    q"""${c.prefix}.excludeFromIndexesUnsafe(..${names})"""
+  }
 }
