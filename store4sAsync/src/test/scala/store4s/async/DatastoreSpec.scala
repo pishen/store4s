@@ -24,6 +24,7 @@ class DatastoreSpec extends AnyFlatSpec with MockFactory {
   val credentials = new GoogleCredentials(
     new AccessToken("token_value", new Date(Long.MaxValue))
   )
+  implicit val partitionId = PartitionId("store4s", None)
   implicit val printerDrop = Printer.noSpaces.copy(dropNullValues = true)
   implicit def respAs[B: Decoder: IsOption] = RespAs.create(asJson[B])
 
@@ -55,7 +56,7 @@ class DatastoreSpec extends AnyFlatSpec with MockFactory {
           Response.ok(out.asJson.noSpaces)
       }
 
-    val ds = Datastore("store4s", None, credentials, backend)
+    val ds = Datastore(credentials, backend)
     assert(ds.allocateId[User] == 123)
   }
 }
