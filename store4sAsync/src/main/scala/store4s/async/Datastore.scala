@@ -98,4 +98,50 @@ case class Datastore[F[_]: Functor, P](
     )
     delete(keys: _*)
   }
+
+  def lookup(keys: Key*)(implicit
+      partitionId: PartitionId,
+      readConsistency: ReadConsistency.Value,
+      serializer: BodySerializer[LookupRequest],
+      respAs: RespAs[LookupResponse]
+  ) = {
+    val body = LookupRequest(
+      ReadOptions(Some(readConsistency.toString), None),
+      keys
+    )
+    authRequest
+      .body(body)
+      .post(buildUri("lookup"))
+      .response(respAs.value.getRight)
+      .send(backend)
+      .map(_.body.found.getOrElse(Seq.empty[EntityResult]).map(_.entity))
+  }
+
+  def lookupById[A: WeakTypeTag](ids: Long*)(implicit
+      partitionId: PartitionId,
+      readConsistency: ReadConsistency.Value,
+      serializer: BodySerializer[LookupRequest],
+      respAs: RespAs[LookupResponse],
+      dec: EntityDecoder[A]
+  ) = {
+    val kind = weakTypeOf[A].typeSymbol.name.toString()
+    val keys = ids.map(id =>
+      Key(partitionId, Seq(PathElement(kind, Some(id.toString), None)))
+    )
+    lookup(keys: _*).map(_.traverse(dec.decode))
+  }
+
+  def lookupByName[A: WeakTypeTag](names: String*)(implicit
+      partitionId: PartitionId,
+      readConsistency: ReadConsistency.Value,
+      serializer: BodySerializer[LookupRequest],
+      respAs: RespAs[LookupResponse],
+      dec: EntityDecoder[A]
+  ) = {
+    val kind = weakTypeOf[A].typeSymbol.name.toString()
+    val keys = names.map(name =>
+      Key(partitionId, Seq(PathElement(kind, None, Some(name))))
+    )
+    lookup(keys: _*).map(_.traverse(dec.decode))
+  }
 }
