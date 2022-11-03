@@ -27,10 +27,10 @@ case class Value(
 )
 case class Entity(key: Option[Key], properties: Map[String, Value])
 case class Mutation(
-    insert: Option[Entity],
-    update: Option[Entity],
-    upsert: Option[Entity],
-    delete: Option[Key]
+    insert: Option[Entity] = None,
+    update: Option[Entity] = None,
+    upsert: Option[Entity] = None,
+    delete: Option[Key] = None
 )
 case class MutationResult(key: Option[Key], version: String)
 case class ReadOptions(

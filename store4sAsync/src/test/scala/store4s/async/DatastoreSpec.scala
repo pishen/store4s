@@ -57,6 +57,6 @@ class DatastoreSpec extends AnyFlatSpec with MockFactory {
       }
 
     val ds = Datastore(credentials, backend)
-    assert(ds.allocateId[User] == 123)
+    assert(ds.allocateIds[User](1).head == 123)
   }
 }
