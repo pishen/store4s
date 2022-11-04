@@ -39,7 +39,7 @@ case class ReadOptions(
 )
 case class EntityResult(entity: Entity, cursor: Option[String])
 case class KindExpression(name: String)
-case class CompositeFilter(op: String, filters: Filter)
+case class CompositeFilter(op: String, filters: Seq[Filter])
 case class PropertyReference(name: String)
 case class PropertyFilter(
     property: PropertyReference,
@@ -47,19 +47,19 @@ case class PropertyFilter(
     value: Value
 )
 case class Filter(
-    compositeFilter: Option[CompositeFilter],
-    propertyFilter: Option[PropertyFilter]
+    compositeFilter: Option[CompositeFilter] = None,
+    propertyFilter: Option[PropertyFilter] = None
 )
 case class PropertyOrder(property: PropertyReference, direction: String)
 case class Query(
     kind: Seq[KindExpression],
-    filter: Option[Filter],
-    order: Option[Seq[PropertyOrder]],
-    distinctOn: Option[Seq[PropertyReference]],
-    startCursor: Option[String],
-    endCursor: Option[String],
-    offset: Option[Int],
-    limit: Option[Int]
+    filter: Option[Filter] = None,
+    order: Option[Seq[PropertyOrder]] = None,
+    distinctOn: Option[Seq[PropertyReference]] = None,
+    startCursor: Option[String] = None,
+    endCursor: Option[String] = None,
+    offset: Option[Int] = None,
+    limit: Option[Int] = None
 )
 case class QueryResultBatch(
     skippedResults: Option[Int],
