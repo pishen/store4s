@@ -3,11 +3,23 @@ package store4s.async
 import cats.Functor
 import cats.syntax.all._
 import com.google.auth.oauth2.GoogleCredentials
+import store4s.async.model.AllocateIdBody
+import store4s.async.model.CommitRequest
+import store4s.async.model.CommitResponse
+import store4s.async.model.Entity
+import store4s.async.model.EntityResult
+import store4s.async.model.Key
+import store4s.async.model.LookupRequest
+import store4s.async.model.LookupResponse
+import store4s.async.model.Mutation
+import store4s.async.model.PartitionId
+import store4s.async.model.PathElement
+import store4s.async.model.ReadOptions
+import store4s.async.model.RunQueryRequest
+import store4s.async.model.RunQueryResponse
 import sttp.client3._
 
 import scala.reflect.runtime.universe._
-
-import model._
 
 case class Datastore[F[_]: Functor, P](
     credentials: GoogleCredentials,
@@ -143,5 +155,24 @@ case class Datastore[F[_]: Functor, P](
       Key(partitionId, Seq(PathElement(kind, None, Some(name))))
     )
     lookup(keys: _*).map(_.map(e => dec.decode(e).toTry.get))
+  }
+
+  def runQuery[S, T](query: Query[S, T])(implicit
+      partitionId: PartitionId,
+      readConsistency: ReadConsistency.Value,
+      serializer: BodySerializer[RunQueryRequest],
+      respAs: RespAs[RunQueryResponse]
+  ) = {
+    val body = RunQueryRequest(
+      partitionId,
+      ReadOptions(Some(readConsistency.toString), None),
+      query.query
+    )
+    authRequest
+      .body(body)
+      .post(buildUri("runQuery"))
+      .response(respAs.value.getRight)
+      .send(backend)
+      .map(resp => Query.Result[T](resp.body.batch))
   }
 }

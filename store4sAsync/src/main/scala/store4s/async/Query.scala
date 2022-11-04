@@ -1,11 +1,13 @@
 package store4s.async
 
 import store4s.async.model.CompositeFilter
+import store4s.async.model.EntityResult
 import store4s.async.model.Filter
 import store4s.async.model.KindExpression
 import store4s.async.model.PropertyFilter
 import store4s.async.model.PropertyOrder
 import store4s.async.model.PropertyReference
+import store4s.async.model.QueryResultBatch
 
 import scala.language.experimental.macros
 import scala.reflect.macros.whitebox.Context
@@ -53,6 +55,13 @@ object Query {
 
   case class ArrayProperty[P](p: P) {
     def exists(f: P => Filter): Filter = f(p)
+  }
+
+  case class Result[T](underlying: QueryResultBatch) {
+    def toSeq(implicit dec: EntityDecoder[T]) = underlying.entityResults
+      .getOrElse(Seq.empty[EntityResult])
+      .map(er => dec.decode(er.entity).toTry.get)
+    def endCursor = underlying.endCursor
   }
 
   def apply[S, T](selector: S, kind: String): Query[S, T] =
