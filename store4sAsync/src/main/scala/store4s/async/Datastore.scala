@@ -128,7 +128,7 @@ case class Datastore[F[_]: Functor, P](
     val keys = ids.map(id =>
       Key(partitionId, Seq(PathElement(kind, Some(id.toString), None)))
     )
-    lookup(keys: _*).map(_.traverse(dec.decode))
+    lookup(keys: _*).map(_.map(e => dec.decode(e).toTry.get))
   }
 
   def lookupByName[A: WeakTypeTag](names: String*)(implicit
@@ -142,6 +142,6 @@ case class Datastore[F[_]: Functor, P](
     val keys = names.map(name =>
       Key(partitionId, Seq(PathElement(kind, None, Some(name))))
     )
-    lookup(keys: _*).map(_.traverse(dec.decode))
+    lookup(keys: _*).map(_.map(e => dec.decode(e).toTry.get))
   }
 }

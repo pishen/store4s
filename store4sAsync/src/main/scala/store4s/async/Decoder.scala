@@ -66,7 +66,7 @@ object ValueDecoder {
     create[Seq[T]](
       _.arrayValue
         .toRight(decodeError("Seq"))
-        .flatMap(_.values.traverse(dec.decode))
+        .flatMap(_.values.toList.traverse(dec.decode))
     )
   implicit def optionDecoder[T](implicit dec: ValueDecoder[T]) =
     new ValueDecoder[Option[T]] {
@@ -103,9 +103,8 @@ object EntityDecoder {
       v <- e.properties
         .get(fieldName)
         .orElse(
-          Option.when(hDecoder.acceptOption)(
-            Value(false, nullValue = Some("NULL_VALUE"))
-          )
+          Some(Value(false, nullValue = Some("NULL_VALUE")))
+            .filter(_ => hDecoder.acceptOption)
         )
         .toRight(new Exception(s"Property not found: ${fieldName}"))
       h <- hDecoder.decode(v)
