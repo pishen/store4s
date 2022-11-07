@@ -9,6 +9,11 @@ import java.util.Base64
 
 import model._
 
+case class ValueDecodeError(targetType: String)
+    extends Exception(s"Cannot decode Value to ${targetType}")
+case class EntityDecodeError(fieldName: String)
+    extends Exception(s"Property not found: ${fieldName}")
+
 trait ValueDecoder[T] { self =>
   def decode(v: Value): Either[Exception, T]
 
@@ -27,9 +32,7 @@ trait ValueDecoder[T] { self =>
 object ValueDecoder {
   def apply[T](implicit dec: ValueDecoder[T]) = dec
 
-  def decodeError(targetType: String) = new Exception(
-    s"Cannot decode Value to ${targetType}"
-  )
+  def decodeError(targetType: String) = ValueDecodeError(targetType)
 
   def create[T](f: Value => Either[Exception, T]) =
     new ValueDecoder[T] {
@@ -106,7 +109,7 @@ object EntityDecoder {
           Some(Value(false, nullValue = Some("NULL_VALUE")))
             .filter(_ => hDecoder.acceptOption)
         )
-        .toRight(new Exception(s"Property not found: ${fieldName}"))
+        .toRight(EntityDecodeError(fieldName))
       h <- hDecoder.decode(v)
       t <- tDecoder.decode(e)
     } yield {
