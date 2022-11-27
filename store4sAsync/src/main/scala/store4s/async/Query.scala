@@ -12,7 +12,9 @@ import store4s.async.model.QueryResultBatch
 import scala.language.experimental.macros
 import scala.reflect.macros.whitebox.Context
 
-case class Query[S, T](
+trait Selector { type R }
+
+case class Query[S <: Selector](
     selector: S,
     query: model.Query
 ) {
@@ -64,8 +66,8 @@ object Query {
     def endCursor = underlying.endCursor
   }
 
-  def apply[S, T](selector: S, kind: String): Query[S, T] =
-    Query[S, T](selector, model.Query(Seq(KindExpression(kind))))
+  def apply[S <: Selector](selector: S, kind: String): Query[S] =
+    Query[S](selector, model.Query(Seq(KindExpression(kind))))
 
   def from[T]: Any = macro impl[T]
 
@@ -120,10 +122,11 @@ object Query {
     }
 
     q"""
-      trait Selector {
+      trait SelectorImpl extends Selector {
+        type R = ${rootType}
         ..$defs
       }
-      Query[Selector, ${rootType}](new Selector {}, $kind)
+      Query[SelectorImpl](new SelectorImpl {}, $kind)
     """
   }
 }

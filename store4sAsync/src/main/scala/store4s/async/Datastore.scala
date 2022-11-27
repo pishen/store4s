@@ -157,7 +157,7 @@ case class Datastore[F[_]: Functor, P](
     lookup(keys: _*).map(_.map(e => dec.decode(e).toTry.get))
   }
 
-  def runQuery[S, T](query: Query[S, T])(implicit
+  def runQuery[S <: Selector](query: Query[S])(implicit
       partitionId: PartitionId,
       readConsistency: ReadConsistency.Value,
       serializer: BodySerializer[RunQueryRequest],
@@ -173,6 +173,6 @@ case class Datastore[F[_]: Functor, P](
       .post(buildUri("runQuery"))
       .response(respAs.value.getRight)
       .send(backend)
-      .map(resp => Query.Result[T](resp.body.batch))
+      .map(resp => Query.Result[query.selector.R](resp.body.batch))
   }
 }
