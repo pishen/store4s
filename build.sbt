@@ -3,27 +3,27 @@ name := "store4s"
 ThisBuild / scalaVersion := "2.13.5"
 ThisBuild / crossScalaVersions := Seq("2.13.5", "2.12.13")
 
-ThisBuild / scalacOptions ++= {
-  val common = Seq(
-    "-feature",
-    "-deprecation",
-    "-language:higherKinds",
-    "-Ywarn-unused:implicits",
-    "-Ywarn-unused:imports",
-    "-Ywarn-unused:locals",
-    "-Ywarn-unused:params",
-    "-Ywarn-unused:patvars",
-    "-Ywarn-unused:privates",
-    //https://stackoverflow.com/questions/56351793
-    "-Ywarn-macros:after"
-  )
-  CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, 12)) => common :+ "-Ypartial-unification" // for cats
-    case _             => common
-  }
-}
-
 val commonSettings = Seq(
+  scalacOptions ++= {
+    val common = Seq(
+      "-feature",
+      "-deprecation",
+      "-language:higherKinds",
+      "-Ywarn-unused:implicits",
+      "-Ywarn-unused:imports",
+      "-Ywarn-unused:locals",
+      "-Ywarn-unused:params",
+      "-Ywarn-unused:patvars",
+      "-Ywarn-unused:privates",
+      //https://stackoverflow.com/questions/56351793
+      "-Ywarn-macros:after"
+    )
+    CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((2, 12)) => common :+ "-Ypartial-unification" // for cats
+      case _             => common
+    }
+  },
+  Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports"),
   libraryDependencies ++= Seq(
     "com.chuusai" %% "shapeless" % "2.3.7",
     "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.3",
