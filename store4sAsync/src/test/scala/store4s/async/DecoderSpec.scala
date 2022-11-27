@@ -14,9 +14,9 @@ class DecoderSpec extends AnyFlatSpec {
     val entity = Entity(
       Some(Key(partitionId, Seq(PathElement("Zombie", None, Some("heroine"))))),
       Map(
-        "number" -> Value(false, integerValue = Some("1")),
-        "name" -> Value(false, stringValue = Some("Sakura Minamoto")),
-        "girl" -> Value(false, booleanValue = Some(true))
+        "number" -> Value(integerValue = Some("1")),
+        "name" -> Value(stringValue = Some("Sakura Minamoto")),
+        "girl" -> Value(booleanValue = Some(true))
       )
     )
     assert(EntityDecoder[Zombie].decode(entity) == Right(ans))
@@ -25,7 +25,7 @@ class DecoderSpec extends AnyFlatSpec {
   it should "get ValueDecodeError for unmatched type" in {
     val entity = Entity(
       Some(Key(partitionId, Seq(PathElement("User", None, None)))),
-      Map("id" -> Value(false, stringValue = Some("abc")))
+      Map("id" -> Value(stringValue = Some("abc")))
     )
     case class User(id: Int)
     val error = intercept[ValueDecodeError] {
@@ -37,7 +37,7 @@ class DecoderSpec extends AnyFlatSpec {
   it should "get EntityDecodeError for not found property" in {
     val entity = Entity(
       Some(Key(partitionId, Seq(PathElement("User", None, None)))),
-      Map("id" -> Value(false, integerValue = Some("1")))
+      Map("id" -> Value(integerValue = Some("1")))
     )
     case class User(name: String)
     val error = intercept[EntityDecodeError] {
@@ -51,7 +51,7 @@ class DecoderSpec extends AnyFlatSpec {
     val ans = User(None, None)
     val entity = Entity(
       Some(Key(partitionId, Seq(PathElement("User", None, None)))),
-      Map("name" -> Value(false, nullValue = Some("NULL_VALUE")))
+      Map("name" -> Value(nullValue = Some("NULL_VALUE")))
     )
     assert(EntityDecoder[User].decode(entity) == Right(ans))
   }
@@ -62,15 +62,14 @@ class DecoderSpec extends AnyFlatSpec {
     val entity = Entity(
       Some(Key(partitionId, Seq(PathElement("Group", None, None)))),
       Map(
-        "id" -> Value(false, integerValue = Some("1")),
+        "id" -> Value(integerValue = Some("1")),
         "members" -> Value(
-          false,
           arrayValue = Some(
             ArrayValue(
               Seq(
-                Value(false, stringValue = Some("A")),
-                Value(false, stringValue = Some("B")),
-                Value(false, stringValue = Some("C"))
+                Value(stringValue = Some("A")),
+                Value(stringValue = Some("B")),
+                Value(stringValue = Some("C"))
               )
             )
           )
@@ -88,16 +87,16 @@ class DecoderSpec extends AnyFlatSpec {
     val hometown = Entity(
       None,
       Map(
-        "country" -> Value(false, stringValue = Some("Japan")),
-        "region" -> Value(false, stringValue = Some("Kyushu")),
-        "city" -> Value(false, stringValue = Some("Saga"))
+        "country" -> Value(stringValue = Some("Japan")),
+        "region" -> Value(stringValue = Some("Kyushu")),
+        "city" -> Value(stringValue = Some("Saga"))
       )
     )
     val entity = Entity(
       Some(Key(partitionId, Seq(PathElement("Zombie", None, None)))),
       Map(
-        "name" -> Value(false, stringValue = Some("Sakura")),
-        "hometown" -> Value(false, entityValue = Some(hometown))
+        "name" -> Value(stringValue = Some("Sakura")),
+        "hometown" -> Value(entityValue = Some(hometown))
       )
     )
     assert(EntityDecoder[Zombie].decode(entity) == Right(ans))
@@ -111,9 +110,9 @@ class DecoderSpec extends AnyFlatSpec {
     val entity = Entity(
       Some(Key(partitionId, Seq(PathElement("Member", None, None)))),
       Map(
-        "number" -> Value(false, integerValue = Some("7")),
-        "name" -> Value(false, stringValue = Some("Maimai Yuzuriha")),
-        "_type" -> Value(false, stringValue = Some("Human"))
+        "number" -> Value(integerValue = Some("7")),
+        "name" -> Value(stringValue = Some("Maimai Yuzuriha")),
+        "_type" -> Value(stringValue = Some("Human"))
       )
     )
     assert(EntityDecoder[Member].decode(entity) == Right(ans))
@@ -126,8 +125,8 @@ class DecoderSpec extends AnyFlatSpec {
     val entity = Entity(
       Some(Key(partitionId, Seq(PathElement("Zombie", None, None)))),
       Map(
-        "name" -> Value(false, stringValue = Some("Sakura Minamoto")),
-        "birthday" -> Value(false, stringValue = Some("1991-04-02"))
+        "name" -> Value(stringValue = Some("Sakura Minamoto")),
+        "birthday" -> Value(stringValue = Some("1991-04-02"))
       )
     )
     assert(EntityDecoder[Zombie].decode(entity) == Right(ans))

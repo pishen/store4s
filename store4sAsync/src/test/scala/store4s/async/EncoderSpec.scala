@@ -12,9 +12,9 @@ class EncoderSpec extends AnyFlatSpec {
     val ans = Entity(
       Some(Key(partitionId, Seq(PathElement("Zombie", None, Some("heroine"))))),
       Map(
-        "number" -> Value(false, integerValue = Some("1")),
-        "name" -> Value(false, stringValue = Some("Sakura Minamoto")),
-        "girl" -> Value(false, booleanValue = Some(true))
+        "number" -> Value(Some(false), integerValue = Some("1")),
+        "name" -> Value(Some(false), stringValue = Some("Sakura Minamoto")),
+        "girl" -> Value(Some(false), booleanValue = Some(true))
       )
     )
     case class Zombie(number: Int, name: String, girl: Boolean)
@@ -25,7 +25,7 @@ class EncoderSpec extends AnyFlatSpec {
   it should "support incomplete key" in {
     val ans = Entity(
       Some(Key(partitionId, Seq(PathElement("User", None, None)))),
-      Map("name" -> Value(false, stringValue = Some("John")))
+      Map("name" -> Value(Some(false), stringValue = Some("John")))
     )
     case class User(name: String)
     val res = User("John").asEntity
@@ -35,7 +35,7 @@ class EncoderSpec extends AnyFlatSpec {
   it should "support nullable value" in {
     val ans = Entity(
       Some(Key(partitionId, Seq(PathElement("User", None, None)))),
-      Map("name" -> Value(false, nullValue = Some("NULL_VALUE")))
+      Map("name" -> Value(Some(false), nullValue = Some("NULL_VALUE")))
     )
     case class User(name: Option[String])
     val res = User(None).asEntity
@@ -46,15 +46,15 @@ class EncoderSpec extends AnyFlatSpec {
     val ans = Entity(
       Some(Key(partitionId, Seq(PathElement("Group", None, None)))),
       Map(
-        "id" -> Value(false, integerValue = Some("1")),
+        "id" -> Value(Some(false), integerValue = Some("1")),
         "members" -> Value(
-          false,
+          Some(false),
           arrayValue = Some(
             ArrayValue(
               Seq(
-                Value(false, stringValue = Some("A")),
-                Value(false, stringValue = Some("B")),
-                Value(false, stringValue = Some("C"))
+                Value(Some(false), stringValue = Some("A")),
+                Value(Some(false), stringValue = Some("B")),
+                Value(Some(false), stringValue = Some("C"))
               )
             )
           )
@@ -70,16 +70,16 @@ class EncoderSpec extends AnyFlatSpec {
     val hometown = Entity(
       None,
       Map(
-        "country" -> Value(false, stringValue = Some("Japan")),
-        "region" -> Value(false, stringValue = Some("Kyushu")),
-        "city" -> Value(false, stringValue = Some("Saga"))
+        "country" -> Value(Some(false), stringValue = Some("Japan")),
+        "region" -> Value(Some(false), stringValue = Some("Kyushu")),
+        "city" -> Value(Some(false), stringValue = Some("Saga"))
       )
     )
     val ans = Entity(
       Some(Key(partitionId, Seq(PathElement("Zombie", None, None)))),
       Map(
-        "name" -> Value(false, stringValue = Some("Sakura")),
-        "hometown" -> Value(false, entityValue = Some(hometown))
+        "name" -> Value(Some(false), stringValue = Some("Sakura")),
+        "hometown" -> Value(Some(false), entityValue = Some(hometown))
       )
     )
     // we need 3 fields in Hometown to check diverging implicit (Lazy)
@@ -95,9 +95,9 @@ class EncoderSpec extends AnyFlatSpec {
     val ans = Entity(
       Some(Key(partitionId, Seq(PathElement("Zombie", None, Some("heroine"))))),
       Map(
-        "number" -> Value(false, integerValue = Some("1")),
-        "name" -> Value(false, stringValue = Some("Sakura Minamoto")),
-        "description" -> Value(true, stringValue = Some(description))
+        "number" -> Value(Some(false), integerValue = Some("1")),
+        "name" -> Value(Some(false), stringValue = Some("Sakura Minamoto")),
+        "description" -> Value(Some(true), stringValue = Some(description))
       )
     )
     case class Zombie(number: Int, name: String, description: String)
@@ -111,15 +111,15 @@ class EncoderSpec extends AnyFlatSpec {
     val ans = Entity(
       Some(Key(partitionId, Seq(PathElement("Group", None, None)))),
       Map(
-        "id" -> Value(false, integerValue = Some("1")),
+        "id" -> Value(Some(false), integerValue = Some("1")),
         "members" -> Value(
-          true,
+          Some(true),
           arrayValue = Some(
             ArrayValue(
               Seq(
-                Value(true, stringValue = Some("A")),
-                Value(true, stringValue = Some("B")),
-                Value(true, stringValue = Some("C"))
+                Value(Some(true), stringValue = Some("A")),
+                Value(Some(true), stringValue = Some("B")),
+                Value(Some(true), stringValue = Some("C"))
               )
             )
           )
@@ -136,9 +136,9 @@ class EncoderSpec extends AnyFlatSpec {
     val ans = Entity(
       Some(Key(partitionId, Seq(PathElement("Member", None, None)))),
       Map(
-        "number" -> Value(false, integerValue = Some("7")),
-        "name" -> Value(false, stringValue = Some("Maimai Yuzuriha")),
-        "_type" -> Value(false, stringValue = Some("Human"))
+        "number" -> Value(Some(false), integerValue = Some("7")),
+        "name" -> Value(Some(false), stringValue = Some("Maimai Yuzuriha")),
+        "_type" -> Value(stringValue = Some("Human"))
       )
     )
     sealed trait Member
@@ -153,8 +153,8 @@ class EncoderSpec extends AnyFlatSpec {
     val ans = Entity(
       Some(Key(partitionId, Seq(PathElement("Zombie", None, None)))),
       Map(
-        "name" -> Value(false, stringValue = Some("Sakura Minamoto")),
-        "birthday" -> Value(false, stringValue = Some("1991-04-02"))
+        "name" -> Value(Some(false), stringValue = Some("Sakura Minamoto")),
+        "birthday" -> Value(Some(false), stringValue = Some("1991-04-02"))
       )
     )
     implicit val enc = ValueEncoder.stringEncoder

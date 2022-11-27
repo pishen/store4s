@@ -106,7 +106,7 @@ object EntityDecoder {
       v <- e.properties
         .get(fieldName)
         .orElse(
-          Some(Value(false, nullValue = Some("NULL_VALUE")))
+          Some(Value(nullValue = Some("NULL_VALUE")))
             .filter(_ => hDecoder.acceptOption)
         )
         .toRight(EntityDecodeError(fieldName))

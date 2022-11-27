@@ -12,7 +12,8 @@ case class TransactionOptions(
 case class LatLng(latitude: Double, longitude: Double)
 case class ArrayValue(values: Seq[Value])
 case class Value(
-    excludeFromIndexes: Boolean,
+    // Value returned from Datastore may not have this field
+    excludeFromIndexes: Option[Boolean] = None,
     nullValue: Option[String] = None,
     booleanValue: Option[Boolean] = None,
     integerValue: Option[String] = None,

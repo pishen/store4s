@@ -21,7 +21,7 @@ class QuerySpec extends AnyFlatSpec {
         PropertyFilter(
           PropertyReference("done"),
           "EQUAL",
-          Value(false, booleanValue = Some(false))
+          Value(Some(false), booleanValue = Some(false))
         )
       )
     )
@@ -30,7 +30,7 @@ class QuerySpec extends AnyFlatSpec {
         PropertyFilter(
           PropertyReference("priority"),
           "GREATER_THAN_OR_EQUAL",
-          Value(false, integerValue = Some("4"))
+          Value(Some(false), integerValue = Some("4"))
         )
       )
     )
@@ -54,7 +54,7 @@ class QuerySpec extends AnyFlatSpec {
         PropertyFilter(
           PropertyReference("done"),
           "EQUAL",
-          Value(false, booleanValue = Some(false))
+          Value(Some(false), booleanValue = Some(false))
         )
       )
     )
@@ -63,7 +63,7 @@ class QuerySpec extends AnyFlatSpec {
         PropertyFilter(
           PropertyReference("priority"),
           "GREATER_THAN_OR_EQUAL",
-          Value(false, integerValue = Some("4"))
+          Value(Some(false), integerValue = Some("4"))
         )
       )
     )
@@ -111,7 +111,7 @@ class QuerySpec extends AnyFlatSpec {
         PropertyFilter(
           PropertyReference("tag"),
           "EQUAL",
-          Value(false, stringValue = Some("fun"))
+          Value(Some(false), stringValue = Some("fun"))
         )
       )
     )
@@ -120,7 +120,7 @@ class QuerySpec extends AnyFlatSpec {
         PropertyFilter(
           PropertyReference("tag"),
           "EQUAL",
-          Value(false, stringValue = Some("programming"))
+          Value(Some(false), stringValue = Some("programming"))
         )
       )
     )
@@ -146,7 +146,7 @@ class QuerySpec extends AnyFlatSpec {
             PropertyFilter(
               PropertyReference("hometown.city"),
               "EQUAL",
-              Value(false, stringValue = Some("Saga"))
+              Value(Some(false), stringValue = Some("Saga"))
             )
           )
         )
@@ -170,7 +170,7 @@ class QuerySpec extends AnyFlatSpec {
             PropertyFilter(
               PropertyReference("members.name"),
               "EQUAL",
-              Value(false, stringValue = Some("Sakura Minamoto"))
+              Value(Some(false), stringValue = Some("Sakura Minamoto"))
             )
           )
         )
@@ -194,7 +194,7 @@ class QuerySpec extends AnyFlatSpec {
             PropertyFilter(
               PropertyReference("name"),
               "EQUAL",
-              Value(false, nullValue = Some("NULL_VALUE"))
+              Value(Some(false), nullValue = Some("NULL_VALUE"))
             )
           )
         )
@@ -208,7 +208,7 @@ class QuerySpec extends AnyFlatSpec {
             PropertyFilter(
               PropertyReference("name"),
               "EQUAL",
-              Value(false, stringValue = Some("Sakura Minamoto"))
+              Value(Some(false), stringValue = Some("Sakura Minamoto"))
             )
           )
         )
@@ -234,7 +234,7 @@ class QuerySpec extends AnyFlatSpec {
       EntityResult(
         Entity(
           None,
-          Map("id" -> Value(false, integerValue = Some(id.toString)))
+          Map("id" -> Value(Some(false), integerValue = Some(id.toString)))
         ),
         None
       )

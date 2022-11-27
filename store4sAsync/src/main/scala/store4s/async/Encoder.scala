@@ -29,38 +29,42 @@ object ValueEncoder {
   }
 
   implicit val booleanEncoder =
-    create[Boolean]((t, e) => Value(e, booleanValue = Some(t)))
+    create[Boolean]((t, e) => Value(Some(e), booleanValue = Some(t)))
   implicit val intEncoder =
-    create[Int]((t, e) => Value(e, integerValue = Some(t.toString)))
+    create[Int]((t, e) => Value(Some(e), integerValue = Some(t.toString)))
   implicit val longEncoder =
-    create[Long]((t, e) => Value(e, integerValue = Some(t.toString)))
+    create[Long]((t, e) => Value(Some(e), integerValue = Some(t.toString)))
   implicit val doubleEncoder =
-    create[Double]((t, e) => Value(e, doubleValue = Some(t)))
+    create[Double]((t, e) => Value(Some(e), doubleValue = Some(t)))
   implicit val instantEncoder =
     create[Instant]((t, e) =>
-      Value(e, timestampValue = Some(t.atZone(ZoneId.of("Z")).toString))
+      Value(Some(e), timestampValue = Some(t.atZone(ZoneId.of("Z")).toString))
     )
-  implicit val keyEncoder = create[Key]((t, e) => Value(e, keyValue = Some(t)))
+  implicit val keyEncoder =
+    create[Key]((t, e) => Value(Some(e), keyValue = Some(t)))
   implicit val stringEncoder =
-    create[String]((t, e) => Value(e, stringValue = Some(t)))
+    create[String]((t, e) => Value(Some(e), stringValue = Some(t)))
   implicit val bytesEncoder =
     create[Array[Byte]]((t, e) =>
-      Value(e, blobValue = Some(Base64.getEncoder().encodeToString(t)))
+      Value(Some(e), blobValue = Some(Base64.getEncoder().encodeToString(t)))
     )
   implicit val latLngEncoder =
-    create[LatLng]((t, e) => Value(e, geoPointValue = Some(t)))
+    create[LatLng]((t, e) => Value(Some(e), geoPointValue = Some(t)))
   implicit def entityEncoder[T](implicit enc: EntityEncoder[T]) =
     create[T]((t, e) =>
-      Value(e, entityValue = Some(enc.encode(t, None, Set.empty)))
+      Value(Some(e), entityValue = Some(enc.encode(t, None, Set.empty)))
     )
   implicit def seqEncoder[T](implicit enc: ValueEncoder[T]) =
     create[Seq[T]]((seq, e) =>
-      Value(e, arrayValue = Some(ArrayValue(seq.map(t => enc.encode(t, e)))))
+      Value(
+        Some(e),
+        arrayValue = Some(ArrayValue(seq.map(t => enc.encode(t, e))))
+      )
     )
   implicit def optionEncoder[T](implicit enc: ValueEncoder[T]) =
     create[Option[T]] {
       case (Some(t), e) => enc.encode(t, e)
-      case (None, e)    => Value(e, nullValue = Some("NULL_VALUE"))
+      case (None, e)    => Value(Some(e), nullValue = Some("NULL_VALUE"))
     }
 }
 
@@ -121,10 +125,8 @@ object EntityEncoder {
       case Inl(h) =>
         val entity = hEncoder.value.encode(h, key, excluded)
         entity.copy(properties =
-          entity.properties + (typeIdentifier.fieldName -> Value(
-            false,
-            stringValue = Some(typeName)
-          ))
+          entity.properties +
+            (typeIdentifier.fieldName -> Value(stringValue = Some(typeName)))
         )
       case Inr(t) => tEncoder.encode(t, key, excluded)
     }
