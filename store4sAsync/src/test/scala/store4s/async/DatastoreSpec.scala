@@ -13,6 +13,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import store4s.async.model.AllocateIdBody
 import store4s.async.model.CommitRequest
 import store4s.async.model.CommitResponse
+import store4s.async.model.Entity
 import store4s.async.model.EntityResult
 import store4s.async.model.Filter
 import store4s.async.model.Key
@@ -80,9 +81,15 @@ class DatastoreSpec extends AnyFlatSpec with MockFactory {
         )
       )
     )
+    val ans = Seq(
+      Entity(
+        Some(Key(partitionId, Seq(PathElement("User", Some("123"), None)))),
+        Map("name" -> Value(Some(false), stringValue = Some("John")))
+      )
+    )
 
     val ds = Datastore(credentials, backend)
-    assert(ds.allocateIds[User](1).head == 123)
+    assert(ds.allocateIds(User("John")) == ans)
   }
 
   it should "support insert" in {

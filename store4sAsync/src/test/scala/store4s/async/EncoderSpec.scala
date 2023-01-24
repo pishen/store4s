@@ -22,29 +22,19 @@ class EncoderSpec extends AnyFlatSpec {
     assert(res == ans)
   }
 
-  it should "support incomplete key" in {
-    val ans = Entity(
-      Some(Key(partitionId, Seq(PathElement("User", None, None)))),
-      Map("name" -> Value(Some(false), stringValue = Some("John")))
-    )
-    case class User(name: String)
-    val res = User("John").asEntity
-    assert(res == ans)
-  }
-
   it should "support nullable value" in {
     val ans = Entity(
-      Some(Key(partitionId, Seq(PathElement("User", None, None)))),
+      Some(Key(partitionId, Seq(PathElement("User", Some("1"), None)))),
       Map("name" -> Value(Some(false), nullValue = Some("NULL_VALUE")))
     )
     case class User(name: Option[String])
-    val res = User(None).asEntity
+    val res = User(None).asEntity(1)
     assert(res == ans)
   }
 
   it should "support array value" in {
     val ans = Entity(
-      Some(Key(partitionId, Seq(PathElement("Group", None, None)))),
+      Some(Key(partitionId, Seq(PathElement("Group", Some("1"), None)))),
       Map(
         "id" -> Value(Some(false), integerValue = Some("1")),
         "members" -> Value(
@@ -62,7 +52,7 @@ class EncoderSpec extends AnyFlatSpec {
       )
     )
     case class Group(id: Int, members: Seq[String])
-    val res = Group(1, Seq("A", "B", "C")).asEntity
+    val res = Group(1, Seq("A", "B", "C")).asEntity(1)
     assert(res == ans)
   }
 
@@ -76,7 +66,7 @@ class EncoderSpec extends AnyFlatSpec {
       )
     )
     val ans = Entity(
-      Some(Key(partitionId, Seq(PathElement("Zombie", None, None)))),
+      Some(Key(partitionId, Seq(PathElement("Zombie", Some("1"), None)))),
       Map(
         "name" -> Value(Some(false), stringValue = Some("Sakura")),
         "hometown" -> Value(Some(false), entityValue = Some(hometown))
@@ -85,7 +75,7 @@ class EncoderSpec extends AnyFlatSpec {
     // we need 3 fields in Hometown to check diverging implicit (Lazy)
     case class Hometown(country: String, region: String, city: String)
     case class Zombie(name: String, hometown: Hometown)
-    val res = Zombie("Sakura", Hometown("Japan", "Kyushu", "Saga")).asEntity
+    val res = Zombie("Sakura", Hometown("Japan", "Kyushu", "Saga")).asEntity(1)
     assert(res == ans)
   }
 
@@ -109,7 +99,7 @@ class EncoderSpec extends AnyFlatSpec {
 
   it should "support excludeFromIndexes on array value" in {
     val ans = Entity(
-      Some(Key(partitionId, Seq(PathElement("Group", None, None)))),
+      Some(Key(partitionId, Seq(PathElement("Group", Some("1"), None)))),
       Map(
         "id" -> Value(Some(false), integerValue = Some("1")),
         "members" -> Value(
@@ -128,13 +118,13 @@ class EncoderSpec extends AnyFlatSpec {
     )
     case class Group(id: Int, members: Seq[String])
     implicit val encoder = EntityEncoder[Group].excludeFromIndexes(_.members)
-    val res = Group(1, Seq("A", "B", "C")).asEntity
+    val res = Group(1, Seq("A", "B", "C")).asEntity(1)
     assert(res == ans)
   }
 
   it should "support ADT" in {
     val ans = Entity(
-      Some(Key(partitionId, Seq(PathElement("Member", None, None)))),
+      Some(Key(partitionId, Seq(PathElement("Member", Some("1"), None)))),
       Map(
         "number" -> Value(Some(false), integerValue = Some("7")),
         "name" -> Value(Some(false), stringValue = Some("Maimai Yuzuriha")),
@@ -145,13 +135,13 @@ class EncoderSpec extends AnyFlatSpec {
     case class Zombie(number: Int, name: String, died: String) extends Member
     case class Human(number: Int, name: String) extends Member
     val member: Member = Human(7, "Maimai Yuzuriha")
-    val res = member.asEntity
+    val res = member.asEntity(1)
     assert(res == ans)
   }
 
   "A ValueEncoder" should "support contramap" in {
     val ans = Entity(
-      Some(Key(partitionId, Seq(PathElement("Zombie", None, None)))),
+      Some(Key(partitionId, Seq(PathElement("Zombie", Some("1"), None)))),
       Map(
         "name" -> Value(Some(false), stringValue = Some("Sakura Minamoto")),
         "birthday" -> Value(Some(false), stringValue = Some("1991-04-02"))
@@ -160,7 +150,7 @@ class EncoderSpec extends AnyFlatSpec {
     implicit val enc = ValueEncoder.stringEncoder
       .contramap[LocalDate](_.toString())
     case class Zombie(name: String, birthday: LocalDate)
-    val res = Zombie("Sakura Minamoto", LocalDate.of(1991, 4, 2)).asEntity
+    val res = Zombie("Sakura Minamoto", LocalDate.of(1991, 4, 2)).asEntity(1)
     assert(res == ans)
   }
 }

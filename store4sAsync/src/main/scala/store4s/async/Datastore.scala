@@ -34,20 +34,25 @@ case class Datastore[F[_]: Functor, P](
   def buildUri(method: String)(implicit partitionId: PartitionId) =
     uri"https://datastore.googleapis.com/v1/projects/${partitionId.projectId}:${method}"
 
-  def allocateIds[A: WeakTypeTag](numOfIds: Int)(implicit
+  def allocateIds[A: WeakTypeTag](objs: A*)(implicit
       partitionId: PartitionId,
       serializer: BodySerializer[AllocateIdBody],
-      respAs: RespAs[AllocateIdBody]
+      respAs: RespAs[AllocateIdBody],
+      enc: EntityEncoder[A]
   ) = {
     val kind = weakTypeOf[A].typeSymbol.name.toString()
     val path = Seq(PathElement(kind, None, None))
-    val body = AllocateIdBody(Seq.fill(numOfIds)(Key(partitionId, path)))
+    val body = AllocateIdBody(Seq.fill(objs.size)(Key(partitionId, path)))
     authRequest
       .body(body)
       .post(buildUri("allocateIds"))
       .response(respAs.value.getRight)
       .send(backend)
-      .map(_.body.keys.map(_.path.head.id.get.toLong))
+      .map { resp =>
+        resp.body.keys.zip(objs).map { case (key, obj) =>
+          enc.encode(obj, Some(key), Set.empty[String])
+        }
+      }
   }
 
   def commit(mutations: Seq[Mutation])(implicit
