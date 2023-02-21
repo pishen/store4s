@@ -3,6 +3,8 @@ package store4s.async
 import cats.Functor
 import cats.syntax.all._
 import com.google.auth.oauth2.GoogleCredentials
+import com.google.auth.oauth2.ServiceAccountCredentials
+import com.google.auth.oauth2.UserCredentials
 import store4s.async.model.AllocateIdBody
 import store4s.async.model.CommitRequest
 import store4s.async.model.CommitResponse
@@ -19,44 +21,51 @@ import store4s.async.model.RunQueryRequest
 import store4s.async.model.RunQueryResponse
 import sttp.client3._
 
+import java.util.concurrent.atomic.AtomicReference
 import scala.reflect.runtime.universe._
 
+case class AccessToken(tokenValue: String, expirationTime: Long)
+
 case class Datastore[F[_]: Functor, P](
-    credentials: GoogleCredentials,
-    backend: SttpBackend[F, P]
+    getToken: () => AccessToken = Datastore.defaultTokenGetter,
+    projectId: String = Datastore.defaultProjectId,
+    backend: SttpBackend[F, P] = HttpURLConnectionBackend()
 ) {
-  def authRequest = {
-    credentials.refreshIfExpired()
-    val accessToken = credentials.getAccessToken().getTokenValue()
-    basicRequest.auth.bearer(accessToken)
+  val accessToken = new AtomicReference(getToken())
+
+  def getTokenWithRefresh() = {
+    val currentToken = accessToken.get()
+    // Try to refresh the token if it's expiring in 6 mins
+    if (currentToken.expirationTime - System.currentTimeMillis() < 360000) {
+      accessToken.compareAndSet(currentToken, getToken())
+    }
+    currentToken.tokenValue
   }
 
-  def buildUri(method: String)(implicit partitionId: PartitionId) =
-    uri"https://datastore.googleapis.com/v1/projects/${partitionId.projectId}:${method}"
+  def authRequest = basicRequest.auth.bearer(getTokenWithRefresh())
 
-  def allocateIds[A: WeakTypeTag](objs: A*)(implicit
-      partitionId: PartitionId,
+  def buildUri(method: String) =
+    uri"https://datastore.googleapis.com/v1/projects/${projectId}:${method}"
+
+  def allocateIds[A: WeakTypeTag](numOfIds: Int, namespace: String = null)(
+      implicit
       serializer: BodySerializer[AllocateIdBody],
-      respAs: RespAs[AllocateIdBody],
-      enc: EntityEncoder[A]
+      respAs: RespAs[AllocateIdBody]
   ) = {
     val kind = weakTypeOf[A].typeSymbol.name.toString()
     val path = Seq(PathElement(kind, None, None))
-    val body = AllocateIdBody(Seq.fill(objs.size)(Key(partitionId, path)))
+    val body = AllocateIdBody(
+      Seq.fill(numOfIds)(Key(PartitionId(projectId, Option(namespace)), path))
+    )
     authRequest
       .body(body)
       .post(buildUri("allocateIds"))
       .response(respAs.value.getRight)
       .send(backend)
-      .map { resp =>
-        resp.body.keys.zip(objs).map { case (key, obj) =>
-          enc.encode(obj, Some(key), Set.empty[String])
-        }
-      }
+      .map(_.body.keys.map(_.path.head.id.get.toLong))
   }
 
   def commit(mutations: Seq[Mutation])(implicit
-      partitionId: PartitionId,
       serializer: BodySerializer[CommitRequest],
       respAs: RespAs[CommitResponse]
   ) = {
@@ -69,56 +78,69 @@ case class Datastore[F[_]: Functor, P](
   }
 
   def insert(entities: Entity*)(implicit
-      partitionId: PartitionId,
       serializer: BodySerializer[CommitRequest],
       respAs: RespAs[CommitResponse]
   ) = commit(entities.map(entity => Mutation(insert = Some(entity))))
 
   def upsert(entities: Entity*)(implicit
-      partitionId: PartitionId,
       serializer: BodySerializer[CommitRequest],
       respAs: RespAs[CommitResponse]
   ) = commit(entities.map(entity => Mutation(upsert = Some(entity))))
 
   def update(entities: Entity*)(implicit
-      partitionId: PartitionId,
       serializer: BodySerializer[CommitRequest],
       respAs: RespAs[CommitResponse]
   ) = commit(entities.map(entity => Mutation(update = Some(entity))))
 
   def delete(keys: Key*)(implicit
-      partitionId: PartitionId,
       serializer: BodySerializer[CommitRequest],
       respAs: RespAs[CommitResponse]
   ) = commit(keys.map(key => Mutation(delete = Some(key))))
 
-  def deleteById[A: WeakTypeTag](ids: Long*)(implicit
-      partitionId: PartitionId,
+  def deleteByIds[A: WeakTypeTag](ids: Seq[Long], namespace: String = null)(
+      implicit
       serializer: BodySerializer[CommitRequest],
       respAs: RespAs[CommitResponse]
   ) = {
     val kind = weakTypeOf[A].typeSymbol.name.toString()
     val keys = ids.map(id =>
-      Key(partitionId, Seq(PathElement(kind, Some(id.toString), None)))
+      Key(
+        PartitionId(projectId, Option(namespace)),
+        Seq(PathElement(kind, Some(id.toString), None))
+      )
     )
     delete(keys: _*)
   }
 
-  def deleteByName[A: WeakTypeTag](names: String*)(implicit
-      partitionId: PartitionId,
+  def deleteById[A: WeakTypeTag](id: Long, namespace: String = null)(implicit
+      serializer: BodySerializer[CommitRequest],
+      respAs: RespAs[CommitResponse]
+  ) = deleteByIds(Seq(id), namespace)
+
+  def deleteByNames[A: WeakTypeTag](
+      names: Seq[String],
+      namespace: String = null
+  )(implicit
       serializer: BodySerializer[CommitRequest],
       respAs: RespAs[CommitResponse]
   ) = {
     val kind = weakTypeOf[A].typeSymbol.name.toString()
     val keys = names.map(name =>
-      Key(partitionId, Seq(PathElement(kind, None, Some(name))))
+      Key(
+        PartitionId(projectId, Option(namespace)),
+        Seq(PathElement(kind, None, Some(name)))
+      )
     )
     delete(keys: _*)
   }
 
-  def lookup(keys: Key*)(implicit
-      partitionId: PartitionId,
-      readConsistency: ReadConsistency.Value,
+  def deleteByName[A: WeakTypeTag](name: String, namespace: String = null)(
+      implicit
+      serializer: BodySerializer[CommitRequest],
+      respAs: RespAs[CommitResponse]
+  ) = deleteByNames(Seq(name), namespace)
+
+  def lookup(keys: Seq[Key], readConsistency: ReadConsistency.Value)(implicit
       serializer: BodySerializer[LookupRequest],
       respAs: RespAs[LookupResponse]
   ) = {
@@ -134,42 +156,74 @@ case class Datastore[F[_]: Functor, P](
       .map(_.body.found.getOrElse(Seq.empty[EntityResult]).map(_.entity))
   }
 
-  def lookupById[A: WeakTypeTag](ids: Long*)(implicit
-      partitionId: PartitionId,
-      readConsistency: ReadConsistency.Value,
+  def lookupByIds[A: WeakTypeTag](
+      ids: Seq[Long],
+      namespace: String = null,
+      readConsistency: ReadConsistency.Value = ReadConsistency.STRONG
+  )(implicit
       serializer: BodySerializer[LookupRequest],
       respAs: RespAs[LookupResponse],
       dec: EntityDecoder[A]
   ) = {
     val kind = weakTypeOf[A].typeSymbol.name.toString()
     val keys = ids.map(id =>
-      Key(partitionId, Seq(PathElement(kind, Some(id.toString), None)))
+      Key(
+        PartitionId(projectId, Option(namespace)),
+        Seq(PathElement(kind, Some(id.toString), None))
+      )
     )
-    lookup(keys: _*).map(_.map(e => dec.decode(e).toTry.get))
+    lookup(keys, readConsistency).map(_.map(e => dec.decode(e).toTry.get))
   }
 
-  def lookupByName[A: WeakTypeTag](names: String*)(implicit
-      partitionId: PartitionId,
-      readConsistency: ReadConsistency.Value,
+  def lookupById[A: WeakTypeTag](
+      id: Long,
+      namespace: String = null,
+      readConsistency: ReadConsistency.Value = ReadConsistency.STRONG
+  )(implicit
+      serializer: BodySerializer[LookupRequest],
+      respAs: RespAs[LookupResponse],
+      dec: EntityDecoder[A]
+  ) = lookupByIds(Seq(id), namespace, readConsistency).map(_.headOption)
+
+  def lookupByNames[A: WeakTypeTag](
+      names: Seq[String],
+      namespace: String = null,
+      readConsistency: ReadConsistency.Value = ReadConsistency.STRONG
+  )(implicit
       serializer: BodySerializer[LookupRequest],
       respAs: RespAs[LookupResponse],
       dec: EntityDecoder[A]
   ) = {
     val kind = weakTypeOf[A].typeSymbol.name.toString()
     val keys = names.map(name =>
-      Key(partitionId, Seq(PathElement(kind, None, Some(name))))
+      Key(
+        PartitionId(projectId, Option(namespace)),
+        Seq(PathElement(kind, None, Some(name)))
+      )
     )
-    lookup(keys: _*).map(_.map(e => dec.decode(e).toTry.get))
+    lookup(keys, readConsistency).map(_.map(e => dec.decode(e).toTry.get))
   }
 
-  def runQuery[S <: Selector](query: Query[S])(implicit
-      partitionId: PartitionId,
-      readConsistency: ReadConsistency.Value,
+  def lookupByName[A: WeakTypeTag](
+      name: String,
+      namespace: String = null,
+      readConsistency: ReadConsistency.Value = ReadConsistency.STRONG
+  )(implicit
+      serializer: BodySerializer[LookupRequest],
+      respAs: RespAs[LookupResponse],
+      dec: EntityDecoder[A]
+  ) = lookupByNames(Seq(name), namespace, readConsistency).map(_.headOption)
+
+  def runQuery[S <: Selector](
+      query: Query[S],
+      namespace: String = null,
+      readConsistency: ReadConsistency.Value = ReadConsistency.STRONG
+  )(implicit
       serializer: BodySerializer[RunQueryRequest],
       respAs: RespAs[RunQueryResponse]
   ) = {
     val body = RunQueryRequest(
-      partitionId,
+      PartitionId(projectId, Option(namespace)),
       ReadOptions(Some(readConsistency.toString), None),
       query.query
     )
@@ -179,5 +233,19 @@ case class Datastore[F[_]: Functor, P](
       .response(respAs.value.getRight)
       .send(backend)
       .map(resp => Query.Result[query.selector.R](resp.body.batch))
+  }
+}
+
+object Datastore {
+  def defaultTokenGetter() = {
+    val credentials = GoogleCredentials.getApplicationDefault()
+    val token = credentials.refreshAccessToken()
+    AccessToken(token.getTokenValue(), token.getExpirationTime().getTime())
+  }
+
+  def defaultProjectId = GoogleCredentials.getApplicationDefault() match {
+    case c: ServiceAccountCredentials => c.getProjectId()
+    case c: UserCredentials           => c.getQuotaProjectId()
+    case _                            => sys.error("Can't find a default project id.")
   }
 }

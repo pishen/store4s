@@ -2,11 +2,17 @@ package store4s.async
 
 import org.scalatest.flatspec.AnyFlatSpec
 import store4s.async.model._
+import sttp.client3.Identity
 
 import java.time.LocalDate
 
 class EncoderSpec extends AnyFlatSpec {
-  implicit val partitionId = PartitionId("store4s", None)
+  implicit val ds = Datastore[Identity, Any](
+    () => AccessToken("token", Long.MaxValue),
+    "store4s",
+    null
+  )
+  val partitionId = PartitionId("store4s", None)
 
   "An EntityEncoder" should "encode case class into Entity" in {
     val ans = Entity(
