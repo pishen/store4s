@@ -127,4 +127,16 @@ class DatastoreSpec extends AnyFlatSpec with OneInstancePerTest {
     assert(caught.getMessage == "Transaction failed")
     assert(simulator.transactions.isEmpty)
   }
+
+  it should "support transactionReadOnly" in {
+    case class Zombie(name: String)
+    val z = Zombie("Sakura Minamoto")
+    ds.insert(z.asEntity("heroine"))
+    val res = ds.transactionReadOnly { tx =>
+      assert(simulator.transactions.head == tx.id)
+      tx.lookupByName[Zombie]("heroine")
+    }
+    assert(simulator.transactions.isEmpty)
+    assert(res.get == z)
+  }
 }
