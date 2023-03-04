@@ -3,6 +3,7 @@ package store4s.async
 import org.scalatest.flatspec.AnyFlatSpec
 import store4s.async.model._
 import sttp.client3.Identity
+import sttp.client3.testing.SttpBackendStub
 
 import java.time.LocalDate
 
@@ -10,7 +11,7 @@ class EncoderSpec extends AnyFlatSpec {
   implicit val ds = Datastore[Identity, Any](
     () => AccessToken("token", Long.MaxValue),
     "store4s",
-    null
+    SttpBackendStub.synchronous
   )
   val partitionId = PartitionId("store4s", None)
 

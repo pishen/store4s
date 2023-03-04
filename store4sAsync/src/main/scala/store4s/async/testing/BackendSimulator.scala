@@ -1,31 +1,20 @@
 package store4s.async.testing
 
-import store4s.async.model.AllocateIdBody
-import store4s.async.model.CommitRequest
-import store4s.async.model.CommitResponse
-import store4s.async.model.Entity
-import store4s.async.model.EntityResult
-import store4s.async.model.Filter
-import store4s.async.model.Key
-import store4s.async.model.LookupRequest
-import store4s.async.model.LookupResponse
-import store4s.async.model.Mutation
-import store4s.async.model.MutationResult
-import store4s.async.model.QueryResultBatch
-import store4s.async.model.ReadOptions
-import store4s.async.model.RunQueryRequest
-import store4s.async.model.RunQueryResponse
-import store4s.async.model.Value
+import store4s.async.model._
 import sttp.client3._
 import sttp.client3.testing.SttpBackendStub
 import sttp.model.Method
 import sttp.model.StatusCode
 
 import java.time.ZonedDateTime
+import java.util.UUID
 import scala.math.Ordering.Implicits._
 import scala.util.Random
 
-case class BackendSimulator(projectId: String)(implicit
+case class BackendSimulator[F[_], P](
+    projectId: String,
+    sttpBackendStub: SttpBackendStub[F, P] = SttpBackendStub.synchronous
+)(implicit
     allocateIdDec: BodyDecoder[AllocateIdBody],
     allocateIdEnc: BodyEncoder[AllocateIdBody],
     commitDec: BodyDecoder[CommitRequest],
@@ -33,10 +22,14 @@ case class BackendSimulator(projectId: String)(implicit
     lookupDec: BodyDecoder[LookupRequest],
     lookupEnc: BodyEncoder[LookupResponse],
     queryDec: BodyDecoder[RunQueryRequest],
-    queryEnc: BodyEncoder[RunQueryResponse]
+    queryEnc: BodyEncoder[RunQueryResponse],
+    txDec: BodyDecoder[BeginTransactionRequest],
+    txEnc: BodyEncoder[BeginTransactionResponse],
+    rollbackDec: BodyDecoder[RollbackRequest]
 ) {
   var db = Map.empty[Key, Entity]
   var allocatedKeys = Set.empty[Key]
+  var transactions = Set.empty[String]
 
   implicit val valueOrdering = new Ordering[Value] {
     def compare(x: Value, y: Value): Int = {
@@ -65,7 +58,7 @@ case class BackendSimulator(projectId: String)(implicit
   def buildUri(method: String) =
     uri"https://datastore.googleapis.com/v1/projects/${projectId}:${method}"
 
-  val backend = SttpBackendStub.synchronous.whenRequestMatchesPartial {
+  val backend = sttpBackendStub.whenRequestMatchesPartial {
     case r if r.uri == buildUri("allocateIds") =>
       assert(r.method == Method.POST)
       val in = allocateIdDec.decode(r.body.asInstanceOf[StringBody].s)
@@ -86,7 +79,12 @@ case class BackendSimulator(projectId: String)(implicit
       assert(r.method == Method.POST)
       val in = commitDec.decode(r.body.asInstanceOf[StringBody].s)
       assert(
-        in.mode == "NON_TRANSACTIONAL" || (in.mode == "TRANSACTIONAL" && in.transaction.isDefined)
+        in match {
+          case CommitRequest("NON_TRANSACTIONAL", _, None) => true
+          case CommitRequest("TRANSACTIONAL", _, Some(txId)) =>
+            transactions.contains(txId)
+          case _ => false
+        }
       )
       val res =
         in.mutations.foldLeft[Either[String, Map[Key, Entity]]](Right(db)) {
@@ -115,6 +113,9 @@ case class BackendSimulator(projectId: String)(implicit
         }
       res match {
         case Right(newDB) =>
+          in.transaction.foreach { txId =>
+            transactions = transactions - txId
+          }
           db = newDB
           val res =
             CommitResponse(in.mutations.map(_ => MutationResult(None, "1")), 0)
@@ -205,5 +206,24 @@ case class BackendSimulator(projectId: String)(implicit
         "NO_MORE_RESULTS"
       )
       Response.ok(queryEnc.encode(RunQueryResponse(batch)))
+    case r if r.uri == buildUri("beginTransaction") =>
+      assert(r.method == Method.POST)
+      val in = txDec.decode(r.body.asInstanceOf[StringBody].s)
+      assert(
+        in.transactionOptions match {
+          case TransactionOptions(Some(_), None) => true
+          case TransactionOptions(None, Some(_)) => true
+          case _                                 => false
+        }
+      )
+      val newTransaction = UUID.randomUUID().toString()
+      transactions = transactions + newTransaction
+      Response.ok(txEnc.encode(BeginTransactionResponse(newTransaction)))
+    case r if r.uri == buildUri("rollback") =>
+      assert(r.method == Method.POST)
+      val in = rollbackDec.decode(r.body.asInstanceOf[StringBody].s)
+      assert(transactions.contains(in.transaction))
+      transactions = transactions - in.transaction
+      Response.ok("")
   }
 }

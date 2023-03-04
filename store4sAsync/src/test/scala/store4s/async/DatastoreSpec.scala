@@ -105,4 +105,26 @@ class DatastoreSpec extends AnyFlatSpec with OneInstancePerTest {
     )
     assert(res.toSeq.head == Zombie("Sakura Minamoto"))
   }
+
+  it should "support transaction" in {
+    case class Zombie(name: String)
+    val e = Zombie("Sakura Minamoto").asEntity("heroine")
+    ds.transaction { tx =>
+      assert(simulator.transactions.head == tx.id)
+      ("Done", Seq(tx.insert(e)))
+    }
+    assert(simulator.transactions.isEmpty)
+    assert(simulator.db.values.head == e)
+  }
+
+  it should "rollback automatically when transaction failed" in {
+    val caught = intercept[RuntimeException] {
+      ds.transaction { tx =>
+        assert(simulator.transactions.head == tx.id)
+        sys.error("Transaction failed")
+      }
+    }
+    assert(caught.getMessage == "Transaction failed")
+    assert(simulator.transactions.isEmpty)
+  }
 }

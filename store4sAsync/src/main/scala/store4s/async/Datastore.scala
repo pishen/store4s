@@ -1,36 +1,25 @@
 package store4s.async
 
-import cats.Functor
-import cats.syntax.all._
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.auth.oauth2.ServiceAccountCredentials
 import com.google.auth.oauth2.UserCredentials
-import store4s.async.model.AllocateIdBody
-import store4s.async.model.CommitRequest
-import store4s.async.model.CommitResponse
-import store4s.async.model.Entity
-import store4s.async.model.EntityResult
-import store4s.async.model.Key
-import store4s.async.model.LookupRequest
-import store4s.async.model.LookupResponse
-import store4s.async.model.Mutation
-import store4s.async.model.PartitionId
-import store4s.async.model.PathElement
-import store4s.async.model.ReadOptions
-import store4s.async.model.RunQueryRequest
-import store4s.async.model.RunQueryResponse
+import store4s.async.model.{Query => _, _}
 import sttp.client3._
+import sttp.monad.MonadError
+import sttp.monad.syntax._
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.reflect.runtime.universe._
 
 case class AccessToken(tokenValue: String, expirationTime: Long)
 
-case class Datastore[F[_]: Functor, P](
+case class Datastore[F[_], P](
     getToken: () => AccessToken = Datastore.defaultTokenGetter,
     projectId: String = Datastore.defaultProjectId,
     backend: SttpBackend[F, P] = HttpURLConnectionBackend()
 ) {
+  implicit val responseMonad = backend.responseMonad
+
   val accessToken = new AtomicReference(getToken())
 
   def getTokenWithRefresh() = {
@@ -65,12 +54,13 @@ case class Datastore[F[_]: Functor, P](
       .map(_.body.keys.map(_.path.head.id.get.toLong))
   }
 
-  def commit(mutations: Seq[Mutation])(implicit
+  def commit(mutations: Seq[Mutation], txOpt: Option[String])(implicit
       serializer: BodySerializer[CommitRequest],
       respAs: RespAs[CommitResponse]
   ) = {
+    val mode = if (txOpt.isDefined) "TRANSACTIONAL" else "NON_TRANSACTIONAL"
     authRequest
-      .body(CommitRequest("NON_TRANSACTIONAL", mutations, None))
+      .body(CommitRequest(mode, mutations, txOpt))
       .post(buildUri("commit"))
       .response(respAs.value.getRight)
       .send(backend)
@@ -80,22 +70,22 @@ case class Datastore[F[_]: Functor, P](
   def insert(entities: Entity*)(implicit
       serializer: BodySerializer[CommitRequest],
       respAs: RespAs[CommitResponse]
-  ) = commit(entities.map(entity => Mutation(insert = Some(entity))))
+  ) = commit(entities.map(entity => Mutation(insert = Some(entity))), None)
 
   def upsert(entities: Entity*)(implicit
       serializer: BodySerializer[CommitRequest],
       respAs: RespAs[CommitResponse]
-  ) = commit(entities.map(entity => Mutation(upsert = Some(entity))))
+  ) = commit(entities.map(entity => Mutation(upsert = Some(entity))), None)
 
   def update(entities: Entity*)(implicit
       serializer: BodySerializer[CommitRequest],
       respAs: RespAs[CommitResponse]
-  ) = commit(entities.map(entity => Mutation(update = Some(entity))))
+  ) = commit(entities.map(entity => Mutation(update = Some(entity))), None)
 
   def delete(keys: Key*)(implicit
       serializer: BodySerializer[CommitRequest],
       respAs: RespAs[CommitResponse]
-  ) = commit(keys.map(key => Mutation(delete = Some(key))))
+  ) = commit(keys.map(key => Mutation(delete = Some(key))), None)
 
   def deleteByIds[A: WeakTypeTag](ids: Seq[Long], namespace: String = null)(
       implicit
@@ -233,6 +223,70 @@ case class Datastore[F[_]: Functor, P](
       .response(respAs.value.getRight)
       .send(backend)
       .map(resp => Query.Result[query.selector.R](resp.body.batch))
+  }
+
+  def beginTransaction(readOnly: Boolean)(implicit
+      serializer: BodySerializer[BeginTransactionRequest],
+      respAs: RespAs[BeginTransactionResponse]
+  ) = {
+    authRequest
+      .body(
+        BeginTransactionRequest(
+          if (readOnly) TransactionOptions(None, Some(ReadOnly()))
+          else TransactionOptions(Some(ReadWrite(None)), None)
+        )
+      )
+      .post(buildUri("beginTransaction"))
+      .response(respAs.value.getRight)
+      .send(backend)
+  }
+
+  def transaction[R](f: Transaction[F, P] => F[(R, Seq[Mutation])])(implicit
+      txSerializer: BodySerializer[BeginTransactionRequest],
+      txRespAs: RespAs[BeginTransactionResponse],
+      commitSerializer: BodySerializer[CommitRequest],
+      commitRespAs: RespAs[CommitResponse],
+      rollbackSerializer: BodySerializer[RollbackRequest]
+  ) = {
+    beginTransaction(false).flatMap { resp =>
+      val txId = resp.body.transaction
+      f(Transaction(txId, this))
+        .flatMap { case (res, mutations) =>
+          commit(mutations, Some(txId)).map(_ => res)
+        }
+        .handleError { case t: Throwable =>
+          authRequest
+            .body(RollbackRequest(txId))
+            .post(buildUri("rollback"))
+            .response(asString.getRight)
+            .send(backend)
+            .flatMap(_ => MonadError[F].error(t))
+        }
+    }
+  }
+
+  def transactionReadOnly[R](f: Transaction[F, P] => F[R])(implicit
+      txSerializer: BodySerializer[BeginTransactionRequest],
+      txRespAs: RespAs[BeginTransactionResponse],
+      commitSerializer: BodySerializer[CommitRequest],
+      commitRespAs: RespAs[CommitResponse],
+      rollbackSerializer: BodySerializer[RollbackRequest]
+  ) = {
+    beginTransaction(true).flatMap { resp =>
+      val txId = resp.body.transaction
+      f(Transaction(txId, this))
+        .flatMap { res =>
+          commit(Seq.empty[Mutation], Some(txId)).map(_ => res)
+        }
+        .handleError { case t: Throwable =>
+          authRequest
+            .body(RollbackRequest(txId))
+            .post(buildUri("rollback"))
+            .response(asString.getRight)
+            .send(backend)
+            .flatMap(_ => MonadError[F].error(t))
+        }
+    }
   }
 }
 
