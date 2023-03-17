@@ -1,7 +1,7 @@
 name := "store4s"
 
-ThisBuild / scalaVersion := "2.13.5"
-ThisBuild / crossScalaVersions := Seq("2.13.5", "2.12.13")
+ThisBuild / scalaVersion := "2.13.10"
+ThisBuild / crossScalaVersions := Seq("2.13.10", "2.12.13")
 
 val commonSettings = Seq(
   scalacOptions ++= {
@@ -26,7 +26,7 @@ val commonSettings = Seq(
   Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports"),
   libraryDependencies ++= Seq(
     "com.chuusai" %% "shapeless" % "2.3.7",
-    "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.3",
+    "org.scala-lang.modules" %% "scala-collection-compat" % "2.9.0",
     "org.scala-lang" % "scala-reflect" % scalaVersion.value,
     "org.typelevel" %% "cats-core" % "2.6.1",
     "org.scalamock" %% "scalamock" % "5.1.0" % Test,
