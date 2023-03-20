@@ -9,7 +9,8 @@ import store4s.sttp.model.RunQueryResponse
 import sttp.client3.BodySerializer
 import sttp.monad.MonadError
 
-case class TransactionStub[F[_]](ds: DatastoreStub[F]) extends Transaction[F] {
+case class TransactionEmulator[F[_]](ds: DatastoreEmulator[F])
+    extends Transaction[F] {
   val projectId: String = ds.projectId
   implicit val responseMonad: MonadError[F] = ds.responseMonad
 

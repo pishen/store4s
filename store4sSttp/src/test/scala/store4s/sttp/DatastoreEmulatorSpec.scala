@@ -13,7 +13,7 @@ class DatastoreStubSpec extends AnyFlatSpec {
     BodyDeserializer.from(asJson[B])
 
   "A DatastoreStub" should "support insert" in {
-    implicit val ds = DatastoreStub.synchronous("store4s")
+    implicit val ds = DatastoreEmulator.synchronous("store4s")
     case class Zombie(name: String)
     ds.insert(Zombie("Sakura Minamoto").asEntity("heroine"))
     assert(ds.lookupByName[Zombie]("heroine").get == Zombie("Sakura Minamoto"))

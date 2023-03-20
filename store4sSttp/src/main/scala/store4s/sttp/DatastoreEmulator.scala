@@ -15,7 +15,7 @@ import scala.math.Ordering.Implicits._
 import scala.reflect.runtime.universe._
 import scala.util.Random
 
-case class DatastoreStub[F[_]](projectId: String, me: MonadError[F])
+case class DatastoreEmulator[F[_]](projectId: String, me: MonadError[F])
     extends Datastore[F] {
   implicit val responseMonad: MonadError[F] = me
 
@@ -182,7 +182,7 @@ case class DatastoreStub[F[_]](projectId: String, me: MonadError[F])
       commitDeserializer: BodyDeserializer[CommitResponse],
       rollbackSerializer: BodySerializer[RollbackRequest]
   ): F[R] = {
-    f(TransactionStub(this))
+    f(TransactionEmulator(this))
       .flatMap { case (res, mutations) =>
         commit(mutations, None).map(_ => res)
       }
@@ -196,15 +196,15 @@ case class DatastoreStub[F[_]](projectId: String, me: MonadError[F])
       commitDeserializer: BodyDeserializer[CommitResponse],
       rollbackSerializer: BodySerializer[RollbackRequest]
   ): F[R] = {
-    f(TransactionStub(this))
+    f(TransactionEmulator(this))
       .handleError { case t: Throwable => responseMonad.error(t) }
   }
 }
 
-object DatastoreStub {
+object DatastoreEmulator {
   def synchronous(projectId: String): Datastore[Identity] =
-    DatastoreStub(projectId, IdMonad)
+    DatastoreEmulator(projectId, IdMonad)
   def asynchronousFuture(projectId: String)(implicit
       ec: ExecutionContext
-  ): Datastore[Future] = DatastoreStub(projectId, new FutureMonad())
+  ): Datastore[Future] = DatastoreEmulator(projectId, new FutureMonad())
 }
