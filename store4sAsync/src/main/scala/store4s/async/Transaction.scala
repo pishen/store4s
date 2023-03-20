@@ -7,10 +7,11 @@ import sttp.monad.syntax._
 
 import scala.reflect.runtime.universe._
 
-case class Transaction[F[_]: MonadError, P](
-    id: String,
-    ds: Datastore[F, P]
-) {
+trait Transaction[F[_]] {
+  val projectId: String
+
+  implicit val responseMonad: MonadError[F]
+
   def insert(entity: Entity) = Mutation(insert = Some(entity))
   def upsert(entity: Entity) = Mutation(upsert = Some(entity))
   def update(entity: Entity) = Mutation(update = Some(entity))
@@ -19,7 +20,7 @@ case class Transaction[F[_]: MonadError, P](
   def deleteById[A: WeakTypeTag](id: Long, namespace: String = null) = {
     val kind = weakTypeOf[A].typeSymbol.name.toString()
     val key = Key(
-      PartitionId(ds.projectId, Option(namespace)),
+      PartitionId(projectId, Option(namespace)),
       Seq(PathElement(kind, Some(id.toString), None))
     )
     delete(key)
@@ -28,7 +29,7 @@ case class Transaction[F[_]: MonadError, P](
   def deleteByName[A: WeakTypeTag](name: String, namespace: String = null) = {
     val kind = weakTypeOf[A].typeSymbol.name.toString()
     val key = Key(
-      PartitionId(ds.projectId, Option(namespace)),
+      PartitionId(projectId, Option(namespace)),
       Seq(PathElement(kind, None, Some(name)))
     )
     delete(key)
@@ -37,14 +38,7 @@ case class Transaction[F[_]: MonadError, P](
   def lookup(keys: Seq[Key])(implicit
       serializer: BodySerializer[LookupRequest],
       respAs: RespAs[LookupResponse]
-  ) = {
-    ds.authRequest
-      .body(LookupRequest(ReadOptions(None, Some(id)), keys))
-      .post(ds.buildUri("lookup"))
-      .response(respAs.value.getRight)
-      .send(ds.backend)
-      .map(_.body.found.getOrElse(Seq.empty[EntityResult]).map(_.entity))
-  }
+  ): F[Seq[Entity]]
 
   def lookupByIds[A: WeakTypeTag](
       ids: Seq[Long],
@@ -57,7 +51,7 @@ case class Transaction[F[_]: MonadError, P](
     val kind = weakTypeOf[A].typeSymbol.name.toString()
     val keys = ids.map(id =>
       Key(
-        PartitionId(ds.projectId, Option(namespace)),
+        PartitionId(projectId, Option(namespace)),
         Seq(PathElement(kind, Some(id.toString), None))
       )
     )
@@ -84,7 +78,7 @@ case class Transaction[F[_]: MonadError, P](
     val kind = weakTypeOf[A].typeSymbol.name.toString()
     val keys = names.map(name =>
       Key(
-        PartitionId(ds.projectId, Option(namespace)),
+        PartitionId(projectId, Option(namespace)),
         Seq(PathElement(kind, None, Some(name)))
       )
     )
@@ -99,6 +93,35 @@ case class Transaction[F[_]: MonadError, P](
       respAs: RespAs[LookupResponse],
       dec: EntityDecoder[A]
   ) = lookupByNames(Seq(name), namespace).map(_.headOption)
+
+  def runQuery[S <: Selector](
+      query: Query[S],
+      namespace: String = null
+  )(implicit
+      serializer: BodySerializer[RunQueryRequest],
+      respAs: RespAs[RunQueryResponse]
+  ): F[Query.Result[query.selector.R]]
+}
+
+case class TransactionImpl[F[_], P](
+    id: String,
+    ds: DatastoreImpl[F, P]
+) extends Transaction[F] {
+  val projectId: String = ds.projectId
+
+  implicit val responseMonad: MonadError[F] = ds.responseMonad
+
+  def lookup(keys: Seq[Key])(implicit
+      serializer: BodySerializer[LookupRequest],
+      respAs: RespAs[LookupResponse]
+  ) = {
+    ds.authRequest
+      .body(LookupRequest(ReadOptions(None, Some(id)), keys))
+      .post(ds.buildUri("lookup"))
+      .response(respAs.value.getRight)
+      .send(ds.backend)
+      .map(_.body.found.getOrElse(Seq.empty[EntityResult]).map(_.entity))
+  }
 
   def runQuery[S <: Selector](
       query: Query[S],

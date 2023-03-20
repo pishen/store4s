@@ -13,59 +13,21 @@ import scala.reflect.runtime.universe._
 
 case class AccessToken(tokenValue: String, expirationTime: Long)
 
-case class Datastore[F[_], P](
-    getToken: () => AccessToken = Datastore.defaultTokenGetter,
-    projectId: String = Datastore.defaultProjectId,
-    backend: SttpBackend[F, P] = HttpURLConnectionBackend()
-) {
-  implicit val responseMonad = backend.responseMonad
+trait Datastore[F[_]] {
+  val projectId: String
 
-  val accessToken = new AtomicReference(getToken())
-
-  def getTokenWithRefresh() = {
-    val currentToken = accessToken.get()
-    // Try to refresh the token if it's expiring in 6 mins
-    if (currentToken.expirationTime - System.currentTimeMillis() < 360000) {
-      accessToken.compareAndSet(currentToken, getToken())
-    }
-    currentToken.tokenValue
-  }
-
-  def authRequest = basicRequest.auth.bearer(getTokenWithRefresh())
-
-  def buildUri(method: String) =
-    uri"https://datastore.googleapis.com/v1/projects/${projectId}:${method}"
+  implicit val responseMonad: MonadError[F]
 
   def allocateIds[A: WeakTypeTag](numOfIds: Int, namespace: String = null)(
       implicit
       serializer: BodySerializer[AllocateIdBody],
       respAs: RespAs[AllocateIdBody]
-  ) = {
-    val kind = weakTypeOf[A].typeSymbol.name.toString()
-    val path = Seq(PathElement(kind, None, None))
-    val body = AllocateIdBody(
-      Seq.fill(numOfIds)(Key(PartitionId(projectId, Option(namespace)), path))
-    )
-    authRequest
-      .body(body)
-      .post(buildUri("allocateIds"))
-      .response(respAs.value.getRight)
-      .send(backend)
-      .map(_.body.keys.map(_.path.head.id.get.toLong))
-  }
+  ): F[Seq[Long]]
 
   def commit(mutations: Seq[Mutation], txOpt: Option[String])(implicit
       serializer: BodySerializer[CommitRequest],
       respAs: RespAs[CommitResponse]
-  ) = {
-    val mode = if (txOpt.isDefined) "TRANSACTIONAL" else "NON_TRANSACTIONAL"
-    authRequest
-      .body(CommitRequest(mode, mutations, txOpt))
-      .post(buildUri("commit"))
-      .response(respAs.value.getRight)
-      .send(backend)
-      .map(_.body.mutationResults.map(_.key))
-  }
+  ): F[Seq[Option[Key]]]
 
   def insert(entities: Entity*)(implicit
       serializer: BodySerializer[CommitRequest],
@@ -133,18 +95,7 @@ case class Datastore[F[_], P](
   def lookup(keys: Seq[Key], readConsistency: ReadConsistency.Value)(implicit
       serializer: BodySerializer[LookupRequest],
       respAs: RespAs[LookupResponse]
-  ) = {
-    val body = LookupRequest(
-      ReadOptions(Some(readConsistency.toString), None),
-      keys
-    )
-    authRequest
-      .body(body)
-      .post(buildUri("lookup"))
-      .response(respAs.value.getRight)
-      .send(backend)
-      .map(_.body.found.getOrElse(Seq.empty[EntityResult]).map(_.entity))
-  }
+  ): F[Seq[Entity]]
 
   def lookupByIds[A: WeakTypeTag](
       ids: Seq[Long],
@@ -211,6 +162,102 @@ case class Datastore[F[_], P](
   )(implicit
       serializer: BodySerializer[RunQueryRequest],
       respAs: RespAs[RunQueryResponse]
+  ): F[Query.Result[query.selector.R]]
+
+  def transaction[R](f: Transaction[F] => F[(R, Seq[Mutation])])(implicit
+      txSerializer: BodySerializer[BeginTransactionRequest],
+      txRespAs: RespAs[BeginTransactionResponse],
+      commitSerializer: BodySerializer[CommitRequest],
+      commitRespAs: RespAs[CommitResponse],
+      rollbackSerializer: BodySerializer[RollbackRequest]
+  ): F[R]
+
+  def transactionReadOnly[R](f: Transaction[F] => F[R])(implicit
+      txSerializer: BodySerializer[BeginTransactionRequest],
+      txRespAs: RespAs[BeginTransactionResponse],
+      commitSerializer: BodySerializer[CommitRequest],
+      commitRespAs: RespAs[CommitResponse],
+      rollbackSerializer: BodySerializer[RollbackRequest]
+  ): F[R]
+}
+
+case class DatastoreImpl[F[_], P](
+    getToken: () => AccessToken = Datastore.defaultTokenGetter,
+    projectId: String = Datastore.defaultProjectId,
+    backend: SttpBackend[F, P] = HttpURLConnectionBackend()
+) extends Datastore[F] {
+  implicit val responseMonad = backend.responseMonad
+
+  val accessToken = new AtomicReference(getToken())
+
+  def getTokenWithRefresh() = {
+    val currentToken = accessToken.get()
+    // Try to refresh the token if it's expiring in 6 mins
+    if (currentToken.expirationTime - System.currentTimeMillis() < 360000) {
+      accessToken.compareAndSet(currentToken, getToken())
+    }
+    currentToken.tokenValue
+  }
+
+  def authRequest = basicRequest.auth.bearer(getTokenWithRefresh())
+
+  def buildUri(method: String) =
+    uri"https://datastore.googleapis.com/v1/projects/${projectId}:${method}"
+
+  def allocateIds[A: WeakTypeTag](numOfIds: Int, namespace: String = null)(
+      implicit
+      serializer: BodySerializer[AllocateIdBody],
+      respAs: RespAs[AllocateIdBody]
+  ) = {
+    val kind = weakTypeOf[A].typeSymbol.name.toString()
+    val path = Seq(PathElement(kind, None, None))
+    val body = AllocateIdBody(
+      Seq.fill(numOfIds)(Key(PartitionId(projectId, Option(namespace)), path))
+    )
+    authRequest
+      .body(body)
+      .post(buildUri("allocateIds"))
+      .response(respAs.value.getRight)
+      .send(backend)
+      .map(_.body.keys.map(_.path.head.id.get.toLong))
+  }
+
+  def commit(mutations: Seq[Mutation], txOpt: Option[String])(implicit
+      serializer: BodySerializer[CommitRequest],
+      respAs: RespAs[CommitResponse]
+  ) = {
+    val mode = if (txOpt.isDefined) "TRANSACTIONAL" else "NON_TRANSACTIONAL"
+    authRequest
+      .body(CommitRequest(mode, mutations, txOpt))
+      .post(buildUri("commit"))
+      .response(respAs.value.getRight)
+      .send(backend)
+      .map(_.body.mutationResults.map(_.key))
+  }
+
+  def lookup(keys: Seq[Key], readConsistency: ReadConsistency.Value)(implicit
+      serializer: BodySerializer[LookupRequest],
+      respAs: RespAs[LookupResponse]
+  ) = {
+    val body = LookupRequest(
+      ReadOptions(Some(readConsistency.toString), None),
+      keys
+    )
+    authRequest
+      .body(body)
+      .post(buildUri("lookup"))
+      .response(respAs.value.getRight)
+      .send(backend)
+      .map(_.body.found.getOrElse(Seq.empty[EntityResult]).map(_.entity))
+  }
+
+  def runQuery[S <: Selector](
+      query: Query[S],
+      namespace: String = null,
+      readConsistency: ReadConsistency.Value = ReadConsistency.STRONG
+  )(implicit
+      serializer: BodySerializer[RunQueryRequest],
+      respAs: RespAs[RunQueryResponse]
   ) = {
     val body = RunQueryRequest(
       PartitionId(projectId, Option(namespace)),
@@ -241,7 +288,7 @@ case class Datastore[F[_], P](
       .send(backend)
   }
 
-  def transaction[R](f: Transaction[F, P] => F[(R, Seq[Mutation])])(implicit
+  def transaction[R](f: Transaction[F] => F[(R, Seq[Mutation])])(implicit
       txSerializer: BodySerializer[BeginTransactionRequest],
       txRespAs: RespAs[BeginTransactionResponse],
       commitSerializer: BodySerializer[CommitRequest],
@@ -250,7 +297,7 @@ case class Datastore[F[_], P](
   ) = {
     beginTransaction(false).flatMap { resp =>
       val txId = resp.body.transaction
-      f(Transaction(txId, this))
+      f(TransactionImpl(txId, this))
         .flatMap { case (res, mutations) =>
           commit(mutations, Some(txId)).map(_ => res)
         }
@@ -265,7 +312,7 @@ case class Datastore[F[_], P](
     }
   }
 
-  def transactionReadOnly[R](f: Transaction[F, P] => F[R])(implicit
+  def transactionReadOnly[R](f: Transaction[F] => F[R])(implicit
       txSerializer: BodySerializer[BeginTransactionRequest],
       txRespAs: RespAs[BeginTransactionResponse],
       commitSerializer: BodySerializer[CommitRequest],
@@ -274,7 +321,7 @@ case class Datastore[F[_], P](
   ) = {
     beginTransaction(true).flatMap { resp =>
       val txId = resp.body.transaction
-      f(Transaction(txId, this))
+      f(TransactionImpl(txId, this))
         .flatMap { res =>
           commit(Seq.empty[Mutation], Some(txId)).map(_ => res)
         }
@@ -302,4 +349,10 @@ object Datastore {
     case c: UserCredentials           => c.getQuotaProjectId()
     case _                            => sys.error("Can't find a default project id.")
   }
+
+  def apply[F[_], P](
+      getToken: () => AccessToken = defaultTokenGetter,
+      projectId: String = defaultProjectId,
+      backend: SttpBackend[F, P] = HttpURLConnectionBackend()
+  ): Datastore[F] = DatastoreImpl(getToken, projectId, backend)
 }

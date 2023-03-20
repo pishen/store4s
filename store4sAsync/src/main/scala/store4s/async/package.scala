@@ -14,7 +14,7 @@ package object async {
   implicit class EntityEncoderOps[A: WeakTypeTag: EntityEncoder, F[_]](obj: A) {
     val kind = weakTypeOf[A].typeSymbol.name.toString()
 
-    def asEntity(id: Long, namespace: String)(implicit ds: Datastore[F, _]) = {
+    def asEntity(id: Long, namespace: String)(implicit ds: Datastore[F]) = {
       EntityEncoder[A].encode(
         obj,
         Some(
@@ -28,7 +28,7 @@ package object async {
     }
 
     def asEntity(name: String, namespace: String)(implicit
-        ds: Datastore[F, _]
+        ds: Datastore[F]
     ) = {
       EntityEncoder[A].encode(
         obj,
@@ -42,10 +42,10 @@ package object async {
       )
     }
 
-    def asEntity(id: Long)(implicit ds: Datastore[F, _]): Entity =
+    def asEntity(id: Long)(implicit ds: Datastore[F]): Entity =
       asEntity(id, null)
 
-    def asEntity(name: String)(implicit ds: Datastore[F, _]): Entity =
+    def asEntity(name: String)(implicit ds: Datastore[F]): Entity =
       asEntity(name, null)
   }
 
