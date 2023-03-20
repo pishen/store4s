@@ -18,7 +18,8 @@ import scala.util.Random
 
 class DatastoreSpec extends AnyFlatSpec {
   implicit val printerDrop = Printer.noSpaces.copy(dropNullValues = true)
-  implicit def respAs[B: Decoder: IsOption] = RespAs.create(asJson[B])
+  implicit def deserializer[B: Decoder: IsOption] =
+    BodyDeserializer.from(asJson[B])
 
   def buildDS[F[_], P](backend: SttpBackend[F, P]) = Datastore(
     () => AccessToken("token", Long.MaxValue),

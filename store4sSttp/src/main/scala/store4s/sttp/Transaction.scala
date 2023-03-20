@@ -37,7 +37,7 @@ trait Transaction[F[_]] {
 
   def lookup(keys: Seq[Key])(implicit
       serializer: BodySerializer[LookupRequest],
-      respAs: RespAs[LookupResponse]
+      deserializer: BodyDeserializer[LookupResponse]
   ): F[Seq[Entity]]
 
   def lookupByIds[A: WeakTypeTag](
@@ -45,7 +45,7 @@ trait Transaction[F[_]] {
       namespace: String = null
   )(implicit
       serializer: BodySerializer[LookupRequest],
-      respAs: RespAs[LookupResponse],
+      deserializer: BodyDeserializer[LookupResponse],
       dec: EntityDecoder[A]
   ) = {
     val kind = weakTypeOf[A].typeSymbol.name.toString()
@@ -63,7 +63,7 @@ trait Transaction[F[_]] {
       namespace: String = null
   )(implicit
       serializer: BodySerializer[LookupRequest],
-      respAs: RespAs[LookupResponse],
+      deserializer: BodyDeserializer[LookupResponse],
       dec: EntityDecoder[A]
   ) = lookupByIds(Seq(id), namespace).map(_.headOption)
 
@@ -72,7 +72,7 @@ trait Transaction[F[_]] {
       namespace: String = null
   )(implicit
       serializer: BodySerializer[LookupRequest],
-      respAs: RespAs[LookupResponse],
+      deserializer: BodyDeserializer[LookupResponse],
       dec: EntityDecoder[A]
   ) = {
     val kind = weakTypeOf[A].typeSymbol.name.toString()
@@ -90,7 +90,7 @@ trait Transaction[F[_]] {
       namespace: String = null
   )(implicit
       serializer: BodySerializer[LookupRequest],
-      respAs: RespAs[LookupResponse],
+      deserializer: BodyDeserializer[LookupResponse],
       dec: EntityDecoder[A]
   ) = lookupByNames(Seq(name), namespace).map(_.headOption)
 
@@ -99,7 +99,7 @@ trait Transaction[F[_]] {
       namespace: String = null
   )(implicit
       serializer: BodySerializer[RunQueryRequest],
-      respAs: RespAs[RunQueryResponse]
+      deserializer: BodyDeserializer[RunQueryResponse]
   ): F[Query.Result[query.selector.R]]
 }
 
@@ -113,12 +113,12 @@ case class TransactionImpl[F[_], P](
 
   def lookup(keys: Seq[Key])(implicit
       serializer: BodySerializer[LookupRequest],
-      respAs: RespAs[LookupResponse]
+      deserializer: BodyDeserializer[LookupResponse]
   ) = {
     ds.authRequest
       .body(LookupRequest(ReadOptions(None, Some(id)), keys))
       .post(ds.buildUri("lookup"))
-      .response(respAs.value.getRight)
+      .response(deserializer.value.getRight)
       .send(ds.backend)
       .map(_.body.found.getOrElse(Seq.empty[EntityResult]).map(_.entity))
   }
@@ -128,7 +128,7 @@ case class TransactionImpl[F[_], P](
       namespace: String = null
   )(implicit
       serializer: BodySerializer[RunQueryRequest],
-      respAs: RespAs[RunQueryResponse]
+      deserializer: BodyDeserializer[RunQueryResponse]
   ) = {
     val body = RunQueryRequest(
       PartitionId(ds.projectId, Option(namespace)),
@@ -138,7 +138,7 @@ case class TransactionImpl[F[_], P](
     ds.authRequest
       .body(body)
       .post(ds.buildUri("runQuery"))
-      .response(respAs.value.getRight)
+      .response(deserializer.value.getRight)
       .send(ds.backend)
       .map(resp => Query.Result[query.selector.R](resp.body.batch))
   }

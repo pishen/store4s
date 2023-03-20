@@ -21,38 +21,38 @@ trait Datastore[F[_]] {
   def allocateIds[A: WeakTypeTag](numOfIds: Int, namespace: String = null)(
       implicit
       serializer: BodySerializer[AllocateIdBody],
-      respAs: RespAs[AllocateIdBody]
+      deserializer: BodyDeserializer[AllocateIdBody]
   ): F[Seq[Long]]
 
   def commit(mutations: Seq[Mutation], txOpt: Option[String])(implicit
       serializer: BodySerializer[CommitRequest],
-      respAs: RespAs[CommitResponse]
+      deserializer: BodyDeserializer[CommitResponse]
   ): F[Seq[Option[Key]]]
 
   def insert(entities: Entity*)(implicit
       serializer: BodySerializer[CommitRequest],
-      respAs: RespAs[CommitResponse]
+      deserializer: BodyDeserializer[CommitResponse]
   ) = commit(entities.map(entity => Mutation(insert = Some(entity))), None)
 
   def upsert(entities: Entity*)(implicit
       serializer: BodySerializer[CommitRequest],
-      respAs: RespAs[CommitResponse]
+      deserializer: BodyDeserializer[CommitResponse]
   ) = commit(entities.map(entity => Mutation(upsert = Some(entity))), None)
 
   def update(entities: Entity*)(implicit
       serializer: BodySerializer[CommitRequest],
-      respAs: RespAs[CommitResponse]
+      deserializer: BodyDeserializer[CommitResponse]
   ) = commit(entities.map(entity => Mutation(update = Some(entity))), None)
 
   def delete(keys: Key*)(implicit
       serializer: BodySerializer[CommitRequest],
-      respAs: RespAs[CommitResponse]
+      deserializer: BodyDeserializer[CommitResponse]
   ) = commit(keys.map(key => Mutation(delete = Some(key))), None)
 
   def deleteByIds[A: WeakTypeTag](ids: Seq[Long], namespace: String = null)(
       implicit
       serializer: BodySerializer[CommitRequest],
-      respAs: RespAs[CommitResponse]
+      deserializer: BodyDeserializer[CommitResponse]
   ) = {
     val kind = weakTypeOf[A].typeSymbol.name.toString()
     val keys = ids.map(id =>
@@ -66,7 +66,7 @@ trait Datastore[F[_]] {
 
   def deleteById[A: WeakTypeTag](id: Long, namespace: String = null)(implicit
       serializer: BodySerializer[CommitRequest],
-      respAs: RespAs[CommitResponse]
+      deserializer: BodyDeserializer[CommitResponse]
   ) = deleteByIds(Seq(id), namespace)
 
   def deleteByNames[A: WeakTypeTag](
@@ -74,7 +74,7 @@ trait Datastore[F[_]] {
       namespace: String = null
   )(implicit
       serializer: BodySerializer[CommitRequest],
-      respAs: RespAs[CommitResponse]
+      deserializer: BodyDeserializer[CommitResponse]
   ) = {
     val kind = weakTypeOf[A].typeSymbol.name.toString()
     val keys = names.map(name =>
@@ -89,12 +89,12 @@ trait Datastore[F[_]] {
   def deleteByName[A: WeakTypeTag](name: String, namespace: String = null)(
       implicit
       serializer: BodySerializer[CommitRequest],
-      respAs: RespAs[CommitResponse]
+      deserializer: BodyDeserializer[CommitResponse]
   ) = deleteByNames(Seq(name), namespace)
 
   def lookup(keys: Seq[Key], readConsistency: ReadConsistency.Value)(implicit
       serializer: BodySerializer[LookupRequest],
-      respAs: RespAs[LookupResponse]
+      deserializer: BodyDeserializer[LookupResponse]
   ): F[Seq[Entity]]
 
   def lookupByIds[A: WeakTypeTag](
@@ -103,7 +103,7 @@ trait Datastore[F[_]] {
       readConsistency: ReadConsistency.Value = ReadConsistency.STRONG
   )(implicit
       serializer: BodySerializer[LookupRequest],
-      respAs: RespAs[LookupResponse],
+      deserializer: BodyDeserializer[LookupResponse],
       dec: EntityDecoder[A]
   ) = {
     val kind = weakTypeOf[A].typeSymbol.name.toString()
@@ -122,7 +122,7 @@ trait Datastore[F[_]] {
       readConsistency: ReadConsistency.Value = ReadConsistency.STRONG
   )(implicit
       serializer: BodySerializer[LookupRequest],
-      respAs: RespAs[LookupResponse],
+      deserializer: BodyDeserializer[LookupResponse],
       dec: EntityDecoder[A]
   ) = lookupByIds(Seq(id), namespace, readConsistency).map(_.headOption)
 
@@ -132,7 +132,7 @@ trait Datastore[F[_]] {
       readConsistency: ReadConsistency.Value = ReadConsistency.STRONG
   )(implicit
       serializer: BodySerializer[LookupRequest],
-      respAs: RespAs[LookupResponse],
+      deserializer: BodyDeserializer[LookupResponse],
       dec: EntityDecoder[A]
   ) = {
     val kind = weakTypeOf[A].typeSymbol.name.toString()
@@ -151,7 +151,7 @@ trait Datastore[F[_]] {
       readConsistency: ReadConsistency.Value = ReadConsistency.STRONG
   )(implicit
       serializer: BodySerializer[LookupRequest],
-      respAs: RespAs[LookupResponse],
+      deserializer: BodyDeserializer[LookupResponse],
       dec: EntityDecoder[A]
   ) = lookupByNames(Seq(name), namespace, readConsistency).map(_.headOption)
 
@@ -161,22 +161,22 @@ trait Datastore[F[_]] {
       readConsistency: ReadConsistency.Value = ReadConsistency.STRONG
   )(implicit
       serializer: BodySerializer[RunQueryRequest],
-      respAs: RespAs[RunQueryResponse]
+      deserializer: BodyDeserializer[RunQueryResponse]
   ): F[Query.Result[query.selector.R]]
 
   def transaction[R](f: Transaction[F] => F[(R, Seq[Mutation])])(implicit
       txSerializer: BodySerializer[BeginTransactionRequest],
-      txRespAs: RespAs[BeginTransactionResponse],
+      txDeserializer: BodyDeserializer[BeginTransactionResponse],
       commitSerializer: BodySerializer[CommitRequest],
-      commitRespAs: RespAs[CommitResponse],
+      commitDeserializer: BodyDeserializer[CommitResponse],
       rollbackSerializer: BodySerializer[RollbackRequest]
   ): F[R]
 
   def transactionReadOnly[R](f: Transaction[F] => F[R])(implicit
       txSerializer: BodySerializer[BeginTransactionRequest],
-      txRespAs: RespAs[BeginTransactionResponse],
+      txDeserializer: BodyDeserializer[BeginTransactionResponse],
       commitSerializer: BodySerializer[CommitRequest],
-      commitRespAs: RespAs[CommitResponse],
+      commitDeserializer: BodyDeserializer[CommitResponse],
       rollbackSerializer: BodySerializer[RollbackRequest]
   ): F[R]
 }
@@ -207,7 +207,7 @@ case class DatastoreImpl[F[_], P](
   def allocateIds[A: WeakTypeTag](numOfIds: Int, namespace: String = null)(
       implicit
       serializer: BodySerializer[AllocateIdBody],
-      respAs: RespAs[AllocateIdBody]
+      deserializer: BodyDeserializer[AllocateIdBody]
   ) = {
     val kind = weakTypeOf[A].typeSymbol.name.toString()
     val path = Seq(PathElement(kind, None, None))
@@ -217,27 +217,27 @@ case class DatastoreImpl[F[_], P](
     authRequest
       .body(body)
       .post(buildUri("allocateIds"))
-      .response(respAs.value.getRight)
+      .response(deserializer.value.getRight)
       .send(backend)
       .map(_.body.keys.map(_.path.head.id.get.toLong))
   }
 
   def commit(mutations: Seq[Mutation], txOpt: Option[String])(implicit
       serializer: BodySerializer[CommitRequest],
-      respAs: RespAs[CommitResponse]
+      deserializer: BodyDeserializer[CommitResponse]
   ) = {
     val mode = if (txOpt.isDefined) "TRANSACTIONAL" else "NON_TRANSACTIONAL"
     authRequest
       .body(CommitRequest(mode, mutations, txOpt))
       .post(buildUri("commit"))
-      .response(respAs.value.getRight)
+      .response(deserializer.value.getRight)
       .send(backend)
       .map(_.body.mutationResults.map(_.key))
   }
 
   def lookup(keys: Seq[Key], readConsistency: ReadConsistency.Value)(implicit
       serializer: BodySerializer[LookupRequest],
-      respAs: RespAs[LookupResponse]
+      deserializer: BodyDeserializer[LookupResponse]
   ) = {
     val body = LookupRequest(
       ReadOptions(Some(readConsistency.toString), None),
@@ -246,7 +246,7 @@ case class DatastoreImpl[F[_], P](
     authRequest
       .body(body)
       .post(buildUri("lookup"))
-      .response(respAs.value.getRight)
+      .response(deserializer.value.getRight)
       .send(backend)
       .map(_.body.found.getOrElse(Seq.empty[EntityResult]).map(_.entity))
   }
@@ -257,7 +257,7 @@ case class DatastoreImpl[F[_], P](
       readConsistency: ReadConsistency.Value = ReadConsistency.STRONG
   )(implicit
       serializer: BodySerializer[RunQueryRequest],
-      respAs: RespAs[RunQueryResponse]
+      deserializer: BodyDeserializer[RunQueryResponse]
   ) = {
     val body = RunQueryRequest(
       PartitionId(projectId, Option(namespace)),
@@ -267,14 +267,14 @@ case class DatastoreImpl[F[_], P](
     authRequest
       .body(body)
       .post(buildUri("runQuery"))
-      .response(respAs.value.getRight)
+      .response(deserializer.value.getRight)
       .send(backend)
       .map(resp => Query.Result[query.selector.R](resp.body.batch))
   }
 
   def beginTransaction(readOnly: Boolean)(implicit
       serializer: BodySerializer[BeginTransactionRequest],
-      respAs: RespAs[BeginTransactionResponse]
+      deserializer: BodyDeserializer[BeginTransactionResponse]
   ) = {
     authRequest
       .body(
@@ -284,15 +284,15 @@ case class DatastoreImpl[F[_], P](
         )
       )
       .post(buildUri("beginTransaction"))
-      .response(respAs.value.getRight)
+      .response(deserializer.value.getRight)
       .send(backend)
   }
 
   def transaction[R](f: Transaction[F] => F[(R, Seq[Mutation])])(implicit
       txSerializer: BodySerializer[BeginTransactionRequest],
-      txRespAs: RespAs[BeginTransactionResponse],
+      txDeserializer: BodyDeserializer[BeginTransactionResponse],
       commitSerializer: BodySerializer[CommitRequest],
-      commitRespAs: RespAs[CommitResponse],
+      commitDeserializer: BodyDeserializer[CommitResponse],
       rollbackSerializer: BodySerializer[RollbackRequest]
   ) = {
     beginTransaction(false).flatMap { resp =>
@@ -314,9 +314,9 @@ case class DatastoreImpl[F[_], P](
 
   def transactionReadOnly[R](f: Transaction[F] => F[R])(implicit
       txSerializer: BodySerializer[BeginTransactionRequest],
-      txRespAs: RespAs[BeginTransactionResponse],
+      txDeserializer: BodyDeserializer[BeginTransactionResponse],
       commitSerializer: BodySerializer[CommitRequest],
-      commitRespAs: RespAs[CommitResponse],
+      commitDeserializer: BodyDeserializer[CommitResponse],
       rollbackSerializer: BodySerializer[RollbackRequest]
   ) = {
     beginTransaction(true).flatMap { resp =>

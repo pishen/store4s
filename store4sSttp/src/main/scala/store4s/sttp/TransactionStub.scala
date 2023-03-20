@@ -15,7 +15,7 @@ case class TransactionStub[F[_]](ds: DatastoreStub[F]) extends Transaction[F] {
 
   def lookup(keys: Seq[Key])(implicit
       serializer: BodySerializer[LookupRequest],
-      respAs: RespAs[LookupResponse]
+      deserializer: BodyDeserializer[LookupResponse]
   ): F[Seq[Entity]] = {
     // ReadConsistency is not used here
     ds.lookup(keys, ReadConsistency.STRONG)
@@ -23,7 +23,7 @@ case class TransactionStub[F[_]](ds: DatastoreStub[F]) extends Transaction[F] {
 
   def runQuery[S <: Selector](query: Query[S], namespace: String)(implicit
       serializer: BodySerializer[RunQueryRequest],
-      respAs: RespAs[RunQueryResponse]
+      deserializer: BodyDeserializer[RunQueryResponse]
   ): F[Query.Result[query.selector.R]] = {
     ds.runQuery[S](query, namespace)
   }

@@ -9,7 +9,8 @@ import sttp.client3.circe._
 
 class DatastoreStubSpec extends AnyFlatSpec {
   implicit val printerDrop = Printer.noSpaces.copy(dropNullValues = true)
-  implicit def respAs[B: Decoder: IsOption] = RespAs.create(asJson[B])
+  implicit def deserializer[B: Decoder: IsOption] =
+    BodyDeserializer.from(asJson[B])
 
   "A DatastoreStub" should "support insert" in {
     implicit val ds = DatastoreStub.synchronous("store4s")

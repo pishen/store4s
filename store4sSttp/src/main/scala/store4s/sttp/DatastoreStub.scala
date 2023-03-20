@@ -24,7 +24,7 @@ case class DatastoreStub[F[_]](projectId: String, me: MonadError[F])
   def allocateIds[A: WeakTypeTag](numOfIds: Int, namespace: String = null)(
       implicit
       serializer: BodySerializer[AllocateIdBody],
-      respAs: RespAs[AllocateIdBody]
+      deserializer: BodyDeserializer[AllocateIdBody]
   ): F[Seq[Long]] = {
     val kind = weakTypeOf[A].typeSymbol.name.toString()
     def key(id: Long) = Key(
@@ -42,7 +42,7 @@ case class DatastoreStub[F[_]](projectId: String, me: MonadError[F])
 
   def commit(mutations: Seq[Mutation], txOpt: Option[String])(implicit
       serializer: BodySerializer[CommitRequest],
-      respAs: RespAs[CommitResponse]
+      deserializer: BodyDeserializer[CommitResponse]
   ): F[Seq[Option[Key]]] = {
     // TODO: txOpt is not handled yet
     mutations.foreach {
@@ -73,7 +73,7 @@ case class DatastoreStub[F[_]](projectId: String, me: MonadError[F])
 
   def lookup(keys: Seq[Key], readConsistency: ReadConsistency.Value)(implicit
       serializer: BodySerializer[LookupRequest],
-      respAs: RespAs[LookupResponse]
+      deserializer: BodyDeserializer[LookupResponse]
   ): F[Seq[Entity]] = {
     responseMonad.unit(
       keys.flatMap(key => db.get(key)).filterNot(_ == null)
@@ -134,7 +134,7 @@ case class DatastoreStub[F[_]](projectId: String, me: MonadError[F])
       readConsistency: ReadConsistency.Value = ReadConsistency.STRONG
   )(implicit
       serializer: BodySerializer[RunQueryRequest],
-      respAs: RespAs[RunQueryResponse]
+      deserializer: BodyDeserializer[RunQueryResponse]
   ): F[Query.Result[query.selector.R]] = {
     val partitionId = PartitionId(projectId, Option(namespace))
     val q = query.query
@@ -177,9 +177,9 @@ case class DatastoreStub[F[_]](projectId: String, me: MonadError[F])
       f: Transaction[F] => F[(R, Seq[Mutation])]
   )(implicit
       txSerializer: BodySerializer[BeginTransactionRequest],
-      txRespAs: RespAs[BeginTransactionResponse],
+      txDeserializer: BodyDeserializer[BeginTransactionResponse],
       commitSerializer: BodySerializer[CommitRequest],
-      commitRespAs: RespAs[CommitResponse],
+      commitDeserializer: BodyDeserializer[CommitResponse],
       rollbackSerializer: BodySerializer[RollbackRequest]
   ): F[R] = {
     f(TransactionStub(this))
@@ -191,9 +191,9 @@ case class DatastoreStub[F[_]](projectId: String, me: MonadError[F])
 
   def transactionReadOnly[R](f: Transaction[F] => F[R])(implicit
       txSerializer: BodySerializer[BeginTransactionRequest],
-      txRespAs: RespAs[BeginTransactionResponse],
+      txDeserializer: BodyDeserializer[BeginTransactionResponse],
       commitSerializer: BodySerializer[CommitRequest],
-      commitRespAs: RespAs[CommitResponse],
+      commitDeserializer: BodyDeserializer[CommitResponse],
       rollbackSerializer: BodySerializer[RollbackRequest]
   ): F[R] = {
     f(TransactionStub(this))
