@@ -1,4 +1,4 @@
-package store4s.async.model
+package store4s.sttp.model
 
 case class PartitionId(projectId: String, namespaceId: Option[String])
 case class PathElement(kind: String, id: Option[String], name: Option[String])

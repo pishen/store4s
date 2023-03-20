@@ -1,9 +1,9 @@
-package store4s.async
+package store4s.sttp
 
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.auth.oauth2.ServiceAccountCredentials
 import com.google.auth.oauth2.UserCredentials
-import store4s.async.model.{Query => _, _}
+import store4s.sttp.model.{Query => _, _}
 import sttp.client3._
 import sttp.monad.MonadError
 import sttp.monad.syntax._

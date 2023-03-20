@@ -1,4 +1,4 @@
-package store4s.async
+package store4s.sttp
 
 object ReadConsistency extends Enumeration {
   val STRONG = Value

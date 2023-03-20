@@ -1,7 +1,7 @@
-package store4s.async
+package store4s.sttp
 
 import org.scalatest.flatspec.AnyFlatSpec
-import store4s.async.model._
+import store4s.sttp.model._
 
 import java.time.LocalDate
 

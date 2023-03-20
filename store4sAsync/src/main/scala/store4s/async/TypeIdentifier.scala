@@ -1,4 +1,4 @@
-package store4s.async
+package store4s.sttp
 
 case class TypeIdentifier(fieldName: String)
 

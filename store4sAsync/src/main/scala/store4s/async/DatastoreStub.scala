@@ -1,6 +1,6 @@
-package store4s.async
+package store4s.sttp
 
-import store4s.async.model.{Query => _, _}
+import store4s.sttp.model.{Query => _, _}
 import sttp.client3.BodySerializer
 import sttp.client3.Identity
 import sttp.client3.monad.IdMonad

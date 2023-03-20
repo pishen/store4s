@@ -1,4 +1,4 @@
-package store4s.async
+package store4s.sttp
 
 import cats.syntax.all._
 import shapeless._

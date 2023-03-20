@@ -1,13 +1,13 @@
-package store4s.async
+package store4s.sttp
 
-import store4s.async.model.CompositeFilter
-import store4s.async.model.EntityResult
-import store4s.async.model.Filter
-import store4s.async.model.KindExpression
-import store4s.async.model.PropertyFilter
-import store4s.async.model.PropertyOrder
-import store4s.async.model.PropertyReference
-import store4s.async.model.QueryResultBatch
+import store4s.sttp.model.CompositeFilter
+import store4s.sttp.model.EntityResult
+import store4s.sttp.model.Filter
+import store4s.sttp.model.KindExpression
+import store4s.sttp.model.PropertyFilter
+import store4s.sttp.model.PropertyOrder
+import store4s.sttp.model.PropertyReference
+import store4s.sttp.model.QueryResultBatch
 
 import scala.language.experimental.macros
 import scala.reflect.macros.whitebox.Context

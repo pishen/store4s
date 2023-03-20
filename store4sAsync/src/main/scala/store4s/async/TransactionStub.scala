@@ -1,11 +1,11 @@
-package store4s.async
+package store4s.sttp
 
-import store4s.async.model.Entity
-import store4s.async.model.Key
-import store4s.async.model.LookupRequest
-import store4s.async.model.LookupResponse
-import store4s.async.model.RunQueryRequest
-import store4s.async.model.RunQueryResponse
+import store4s.sttp.model.Entity
+import store4s.sttp.model.Key
+import store4s.sttp.model.LookupRequest
+import store4s.sttp.model.LookupResponse
+import store4s.sttp.model.RunQueryRequest
+import store4s.sttp.model.RunQueryResponse
 import sttp.client3.BodySerializer
 import sttp.monad.MonadError
 

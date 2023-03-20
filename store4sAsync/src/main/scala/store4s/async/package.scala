@@ -1,16 +1,16 @@
 package store4s
 
-import store4s.async.model.CompositeFilter
-import store4s.async.model.Entity
-import store4s.async.model.Filter
-import store4s.async.model.Key
-import store4s.async.model.PartitionId
-import store4s.async.model.PathElement
+import store4s.sttp.model.CompositeFilter
+import store4s.sttp.model.Entity
+import store4s.sttp.model.Filter
+import store4s.sttp.model.Key
+import store4s.sttp.model.PartitionId
+import store4s.sttp.model.PathElement
 
 import scala.language.implicitConversions
 import scala.reflect.runtime.universe._
 
-package object async {
+package object sttp {
   implicit class EntityEncoderOps[A: WeakTypeTag: EntityEncoder, F[_]](obj: A) {
     val kind = weakTypeOf[A].typeSymbol.name.toString()
 

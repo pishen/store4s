@@ -1,4 +1,4 @@
-package store4s.async
+package store4s.sttp
 
 import sttp.client3.ResponseAs
 import sttp.client3.ResponseException

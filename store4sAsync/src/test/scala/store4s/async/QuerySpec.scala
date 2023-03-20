@@ -1,16 +1,16 @@
-package store4s.async
+package store4s.sttp
 
 import org.scalatest.flatspec.AnyFlatSpec
-import store4s.async.model.CompositeFilter
-import store4s.async.model.Entity
-import store4s.async.model.EntityResult
-import store4s.async.model.Filter
-import store4s.async.model.KindExpression
-import store4s.async.model.PropertyFilter
-import store4s.async.model.PropertyOrder
-import store4s.async.model.PropertyReference
-import store4s.async.model.QueryResultBatch
-import store4s.async.model.Value
+import store4s.sttp.model.CompositeFilter
+import store4s.sttp.model.Entity
+import store4s.sttp.model.EntityResult
+import store4s.sttp.model.Filter
+import store4s.sttp.model.KindExpression
+import store4s.sttp.model.PropertyFilter
+import store4s.sttp.model.PropertyOrder
+import store4s.sttp.model.PropertyReference
+import store4s.sttp.model.QueryResultBatch
+import store4s.sttp.model.Value
 
 import java.time.Instant
 

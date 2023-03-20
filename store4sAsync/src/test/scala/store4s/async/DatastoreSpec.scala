@@ -1,4 +1,4 @@
-package store4s.async
+package store4s.sttp
 
 import io.circe.Decoder
 import io.circe.Printer
@@ -6,7 +6,7 @@ import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.syntax._
 import org.scalatest.flatspec.AnyFlatSpec
-import store4s.async.model.{Query => _, _}
+import store4s.sttp.model.{Query => _, _}
 import sttp.client3.IsOption
 import sttp.client3._
 import sttp.client3.circe._
@@ -301,7 +301,7 @@ class DatastoreSpec extends AnyFlatSpec {
       reqBody == RunQueryRequest(
         PartitionId("store4s", None),
         ReadOptions(Some("STRONG"), None),
-        store4s.async.model.Query(
+        store4s.sttp.model.Query(
           Seq(KindExpression("Zombie")),
           Some(
             Filter(
