@@ -3,154 +3,196 @@
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/net.pishen/store4s_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/net.pishen/store4s_2.13)
 [![javadoc](https://javadoc.io/badge2/net.pishen/store4s_2.13/javadoc.svg)](https://javadoc.io/doc/net.pishen/store4s_2.13)
 
-A Scala library for [Google Cloud Datastore](https://cloud.google.com/datastore), providing compile-time mappings between case classes and Datastore entities, and a type-safe query DSL.
+A Scala library for [Firestore in Datastore mode](https://cloud.google.com/datastore), providing compile-time mappings between case classes and Datastore entities, a type-safe query DSL, and asynchronous interfaces.
+
+```scala
+// Google's Java library
+val taskKey = datastore.newKeyFactory().setKind("Task").newKey("sampleTask")
+val task = Entity.newBuilder(taskKey)
+  .set("category", "Personal")
+  .set("done", false)
+  .set("priority", 4)
+  .set("description", "Learn Cloud Datastore")
+  .build()
+
+// store4s
+val task = Task("Personal", false, 4, "Learn Cloud Datastore").asEntity("sampleTask")
+
+// Google's Java library
+val query = Query.newEntityQueryBuilder()
+  .setKind("Task")
+  .setFilter(
+    CompositeFilter.and(
+      PropertyFilter.eq("done", false),
+      PropertyFilter.ge("priority", 4)
+    )
+  )
+  .setOrderBy(OrderBy.desc("priority"))
+  .build()
+
+// store4s
+val query = Query.from[Task]
+  .filter(t => !t.done && t.priority >= 4)
+  .sortBy(_.priority.desc)
+```
 
 ## Installation
 
-For regular use:
+> **Note**
+> This document is for the sttp version of store4s, to see the older version which is integrated with Google's Java API and Datastore V1 API (which is compatible with Apache Beam), check the [old README](https://github.com/pishen/store4s/tree/v0.14.0).
+
 ```scala
-libraryDependencies += "net.pishen" %% "store4s" % "<version>"
+"net.pishen" %% "store4s-sttp" % "<version>"
 ```
 
-For [datastore-v1](https://github.com/googleapis/google-cloud-datastore) (compatible with Apache Beam):
+store4s uses [sttp](https://sttp.softwaremill.com/en/stable/index.html) to connect with [Datastore's REST API](https://cloud.google.com/datastore/docs/reference/data/rest/v1/projects). By using sttp, you can integrate store4s with the [HTTP backend](https://sttp.softwaremill.com/en/stable/backends/summary.html) and [JSON library](https://sttp.softwaremill.com/en/stable/json.html) you are using. (e.g. akka-http with circe, or http4s with play-json ...etc)
+
+If you are using circe as your JSON library, add the additional dependency to reduce the boilerplate code:
+
 ```scala
-libraryDependencies += "net.pishen" %% "store4s-v1" % "<version>"
+"net.pishen" %% "store4s-sttp-circe" % "<version>"
 ```
+
+## Getting Started
+```scala
+import store4s.sttp._
+// import these if you are using circe
+import store4s.sttp.circe._
+import sttp.client3.circe._
+import io.circe.generic.auto._
+
+// synchronous version
+implicit val ds = Datastore()
+
+// asynchronous version (use akka-http as example)
+import sttp.client3.akkahttp._
+implicit val ds = Datastore(backend = AkkaHttpBackend())
+```
+
+store4s will detect the default project id and refresh the access token using Google's [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials), but you can also specify it by yourself:
+
+```scala
+implicit val ds = Datastore(projectId = "my-project-id")
+```
+
+## Operations
+Here are some basic functions to interact with Datastore:
+```scala
+ds.insert(entity)
+ds.upsert(entity)
+ds.update(entity)
+ds.deleteById[Task](taskId)
+ds.deleteByName[Task](taskName)
+ds.lookupById[Task](taskId)
+ds.lookupByName[Task](taskName)
+ds.runQuery(query)
+ds.transaction { tx =>
+  val oldTask = tx.lookupById[Task](taskId).get
+  val entity = changeTaskInfo(oldTask)
+  (oldTask, Seq(tx.update(entity)))
+}
+```
+
+Check the [Scaladoc](https://javadoc.io/doc/net.pishen/store4s_2.13) or read on for further details.
 
 ## Encoding
-Convert a case class to entity using `asEntity`:
+Convert a case class to Entity using `asEntity`:
 ```scala
-import store4s._
+case class Task(
+  category: String,
+  done: Boolean,
+  priority: Int,
+  description: String
+)
 
-case class Zombie(number: Int, name: String, girl: Boolean)
-
-implicit val ds = Datastore.defaultInstance
-
-// create an Entity without name/id
-val z6 = Zombie(6, "Lily Hoshikawa", false).asEntity
 // create an Entity with name
-val z1 = Zombie(1, "Sakura Minamoto", true).asEntity("heroine")
+val entity1 = Task("Personal", false, 4, "Learn Cloud Datastore").asEntity("sampleTask")
+
 // create an Entity with id
-val z2 = Zombie(2, "Saki Nikaido", true).asEntity(2)
-// create an Entity with case class property as name/id
-val z3 = Zombie(3, "Ai Mizuno", true).asEntity(_.name)
+val entity2 = Task("Work", true, 5, "Drink milk").asEntity(10)
 ```
 The basic data types, `Seq`, `Option`, and nested case classes are supported.
 
 ### Custom types
 To support custom types, one can create a `ValueEncoder` from an existing `ValueEncoder` using `contramap`:
 ```scala
-val enc: ValueEncoder[LocalDate] =
+implicit val enc: ValueEncoder[LocalDate] =
   ValueEncoder.stringEncoder.contramap[LocalDate](_.toString)
-```
-
-### Interact with Datastore
-To insert, upsert, or update the entity into datastore:
-```scala
-ds.add(z6)
-ds.put(z1)
-ds.update(z2)
 ```
 
 ### Exclude from indexes
 To exclude properties from indexes, use the `excludeFromIndexes` function from `EntityEncoder`:
 ```scala
-implicit val enc = EntityEncoder[Zombie].excludeFromIndexes(_.name, _.girl)
-
-// z1 will have 'name' and 'girl' properties excluded
-val z1 = Zombie(1, "Sakura Minamoto", true).asEntity("heroine")
+implicit val enc = EntityEncoder[Task].excludeFromIndexes(_.description)
 ```
 
 ## Decoding
-Get an entity from datastore:
+Decode an Entity back to case class using `EntityDecoder`:
+
 ```scala
-import store4s._
-case class Zombie(number: Int, name: String, girl: Boolean)
-
-val ds = Datastore.defaultInstance
-
-val key1 = ds.keyFactory[Zombie].newKey("heroine")
-val e1: Option[Entity] = ds.get(key1)
+EntityDecoder[Task].decode(entity)
+// Right(Task("Personal", false, 4, "Learn Cloud Datastore"))
 ```
 
-Decode an entity into case class using `decodeEntity`:
-```scala
-val zE: Either[Throwable, Zombie] = decodeEntity[Zombie](e1.get)
-```
+> **Note**
+> By using helper functions like `lookupById[A]`, `lookupByName[A]`, and `runQuery` from `Datastore`, `EntityDecoder` is automatically applied underneath, which means you usually don't need to call this `decode` function by yourself.
 
-If you want to decode the entity directly and throw the Exception when it fail:
-```scala
-val zOpt: Option[Zombie] = ds.getRight[Zombie]("heroine")
-```
-
+### Custom types
 To support custom types, one can create a `ValueDecoder` from an existing `ValueDecoder` using `map` or `emap`:
 ```scala
-val dec: ValueDecoder[LocalDate] =
+implicit val dec: ValueDecoder[LocalDate] =
   ValueDecoder.stringDecoder.map(LocalDate.parse)
 ```
 
-## Querying
-A query can be built using the `Query` object:
+## Query
+Build a Query object using `Query.from[A]`:
 ```scala
-import store4s._
-case class Zombie(number: Int, name: String, girl: Boolean)
-
-implicit val ds = Datastore.defaultInstance
-
-val q = Query[Zombie]
-  .filter(_.girl)
-  .filter(_.number > 1)
-  .sortBy(_.number.desc)
+val query = Query.from[Task]
+  .filter(t => !t.done && t.priority >= 4)
+  .sortBy(_.priority.desc)
+  .drop(2)
   .take(3)
-
-val r1: EntityQuery = q.builder().build()
-val r2: Seq[Entity] = q.run.getEntities
-val r3: Seq[Either[Throwable, Zombie]] = q.run.getEithers
-val r4: Seq[Zombie] = q.run.getRights
 ```
 
-Use `getRights` to decode the Entities and throw Exceptions if any decoding failed.
+Drop this Query object into `runQuery` to get the result:
+```scala
+val res = ds.runQuery(query)
 
+res.toSeq // Seq[Task]
+res.endCursor // String
+```
+
+### Array type
 For querying on [array type values](https://cloud.google.com/datastore/docs/concepts/queries#multiple_equality_filters), which corresponds to `Seq`, an `exists` function is available:
 ```scala
-import store4s._
 case class Task(tags: Seq[String])
 
-implicit val ds = Datastore.defaultInstance
-
-Query[Task]
+Query.from[Task]
   .filter(_.tags.exists(_ == "Scala"))
   .filter(_.tags.exists(_ == "rocks"))
-  .run
 ```
 
+### Nested entity
 For querying on the properties of embedded entity (which can be referred using `.`):
 ```scala
-import store4s._
-case class Hometown(country: String, city: String)
-case class Zombie(name: String, hometown: Hometown)
+case class Category(name: String, description: String)
+case class Task(category: Category, done: Boolean, description: String)
 
-implicit val ds = Datastore.defaultInstance
-
-Query[Zombie]
-  .filter(_.hometown.city == "Saga")
-  .run
+Query.from[Task].filter(_.category.name == "Personal")
 ```
-
-Check the [testing code](store4s/src/test/scala/store4s/QuerySpec.scala) for more supported features.
 
 ## ADT (Algebraic Data Types)
 
 Support for encoding/decoding ADT is achieved by adding a property named `_type` into entities. When encoding a trait like this:
 
 ```scala
-sealed trait Member
-case class Zombie(name: String) extends Member
-case class Human(name: String) extends Member
+sealed trait User
+case class Student(name: String) extends User
+case class Teacher(name: String) extends User
 
-val member: Member = Human("Maimai Yuzuriha")
+val user: User = Student("Maimai Yuzuriha")
 
-member.asEntity
+val entity = user.asEntity("sampleUser")
 ```
 
 The result entity will be:
@@ -158,13 +200,14 @@ The result entity will be:
 ```
 key {
   path {
-    kind: "Member"
+    kind: "User"
+    name: "sampleUser"
   }
 }
 properties {
   key: "_type"
   value {
-    string_value: "Human"
+    string_value: "Student"
   }
 }
 properties {
@@ -178,13 +221,13 @@ properties {
 Which can then be decoded using
 
 ```scala
-decodeEntity[Member]
+EntityDecoder[User].decode(entity)
 ```
 
-The property name `_type` can be configured using `typeIdentifier` in `Datastore`:
+The property name `_type` can be configured by providing your own `TypeIdentifier`:
 
 ```scala
-implicit val ds = Datastore.defaultInstance.copy(typeIdentifier = "typeName")
+implicit val typeIdentifier = TypeIdentifier("my_type")
 ```
 
 ## Transaction
@@ -192,19 +235,12 @@ implicit val ds = Datastore.defaultInstance.copy(typeIdentifier = "typeName")
 Use `transaction` to create a Transaction:
 
 ```scala
-implicit val ds = Datastore.defaultInstance
-
-val zOpt = ds.transaction { implicit tx =>
-  tx.add(z6)
-  tx.put(z1)
-  tx.update(z2)
-  tx.delete(key1)
-  val zOpt = tx.getRight[Zombie]("heroine")
-  val qRes = Query[Zombie]
-    .filter(_.hometown.city == "Saga")
-    .runTx
-  (zOpt, qRes)
+val res = ds.transaction { tx =>
+  val oldTask = tx.lookupById[Task](taskId).get
+  val entity = changeTaskInfo(oldTask)
+  (oldTask, Seq(tx.update(entity)))
 }
+// res: Task
 ```
 
-The Transaction will be committed once the function is completed, or rollbacked if an Exception is thrown.
+It expects a lambda function with type `Transaction[F] => F[(R, Seq[Mutation])]`, note that all the mutations should be committed together at the end. If the lambda return a failed effect (e.g. throwing an Exception in synchronous mode or returning a failed Future in asynchronous mode), transaction will be automatically rolled back and no changes will be applied.
