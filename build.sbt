@@ -52,10 +52,10 @@ lazy val store4sV1 = project
     )
   )
 
-lazy val store4sAsync = project
+lazy val store4sSttp = project
   .settings(
     commonSettings,
-    name := "store4s-async",
+    name := "store4s-sttp",
     libraryDependencies ++= Seq(
       "com.softwaremill.sttp.client3" %% "core" % "3.5.2",
       "com.google.auth" % "google-auth-library-oauth2-http" % "1.12.0",
