@@ -64,6 +64,17 @@ lazy val store4sSttp = project
     )
   )
 
+lazy val store4sSttpCirce = project
+  .settings(
+    commonSettings,
+    name := "store4s-sttp-circe",
+    libraryDependencies ++= Seq(
+      "io.circe" %% "circe-generic" % "0.14.1",
+      "com.softwaremill.sttp.client3" %% "circe" % "3.5.2"
+    )
+  )
+  .dependsOn(store4sSttp)
+
 //prevent root project from running these tasks
 publish / skip := true
 
