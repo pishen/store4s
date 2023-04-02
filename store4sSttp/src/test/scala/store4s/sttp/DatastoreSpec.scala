@@ -22,7 +22,7 @@ class DatastoreSpec extends AnyFlatSpec {
     BodyDeserializer.from(asJson[B])
 
   def buildDS[F[_], P](backend: SttpBackend[F, P]) = Datastore(
-    () => AccessToken("token", Long.MaxValue),
+    new AccessToken { def get() = "token" },
     "store4s",
     backend
   )

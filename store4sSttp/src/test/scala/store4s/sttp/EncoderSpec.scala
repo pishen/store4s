@@ -9,7 +9,7 @@ import java.time.LocalDate
 
 class EncoderSpec extends AnyFlatSpec {
   implicit val ds = Datastore[Identity, Any](
-    () => AccessToken("token", Long.MaxValue),
+    new AccessToken { def get() = "token" },
     "store4s",
     SttpBackendStub.synchronous
   )

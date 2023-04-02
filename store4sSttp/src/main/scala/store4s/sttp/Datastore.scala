@@ -8,10 +8,7 @@ import sttp.client3._
 import sttp.monad.MonadError
 import sttp.monad.syntax._
 
-import java.util.concurrent.atomic.AtomicReference
 import scala.reflect.runtime.universe._
-
-case class AccessToken(tokenValue: String, expirationTime: Long)
 
 trait Datastore[F[_]] {
   val projectId: String
@@ -182,24 +179,13 @@ trait Datastore[F[_]] {
 }
 
 case class DatastoreImpl[F[_], P](
-    getToken: () => AccessToken = Datastore.defaultTokenGetter,
-    projectId: String = Datastore.defaultProjectId,
-    backend: SttpBackend[F, P] = HttpURLConnectionBackend()
+    accessToken: AccessToken,
+    projectId: String,
+    backend: SttpBackend[F, P]
 ) extends Datastore[F] {
   implicit val responseMonad = backend.responseMonad
 
-  val accessToken = new AtomicReference(getToken())
-
-  def getTokenWithRefresh() = {
-    val currentToken = accessToken.get()
-    // Try to refresh the token if it's expiring in 6 mins
-    if (currentToken.expirationTime - System.currentTimeMillis() < 360000) {
-      accessToken.compareAndSet(currentToken, getToken())
-    }
-    currentToken.tokenValue
-  }
-
-  def authRequest = basicRequest.auth.bearer(getTokenWithRefresh())
+  def authRequest = basicRequest.auth.bearer(accessToken.get())
 
   def buildUri(method: String) =
     uri"https://datastore.googleapis.com/v1/projects/${projectId}:${method}"
@@ -338,12 +324,6 @@ case class DatastoreImpl[F[_], P](
 }
 
 object Datastore {
-  def defaultTokenGetter() = {
-    val credentials = GoogleCredentials.getApplicationDefault()
-    val token = credentials.refreshAccessToken()
-    AccessToken(token.getTokenValue(), token.getExpirationTime().getTime())
-  }
-
   def defaultProjectId = GoogleCredentials.getApplicationDefault() match {
     case c: ServiceAccountCredentials => c.getProjectId()
     case c: UserCredentials           => c.getQuotaProjectId()
@@ -351,8 +331,8 @@ object Datastore {
   }
 
   def apply[F[_], P](
-      getToken: () => AccessToken = defaultTokenGetter,
+      accessToken: AccessToken = new AccessTokenImpl(),
       projectId: String = defaultProjectId,
       backend: SttpBackend[F, P] = HttpURLConnectionBackend()
-  ): Datastore[F] = DatastoreImpl(getToken, projectId, backend)
+  ): Datastore[F] = new DatastoreImpl(accessToken, projectId, backend)
 }
