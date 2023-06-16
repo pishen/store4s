@@ -8,6 +8,9 @@ import store4s.sttp.model.PropertyFilter
 import store4s.sttp.model.PropertyOrder
 import store4s.sttp.model.PropertyReference
 import store4s.sttp.model.QueryResultBatch
+import store4s.sttp.model.RunQueryRequest
+import store4s.sttp.model.RunQueryResponse
+import sttp.client3._
 
 import scala.language.experimental.macros
 import scala.reflect.macros.whitebox.Context
@@ -39,6 +42,41 @@ case class Query[S <: Selector](
     this.copy(query = query.copy(offset = Some(n)))
   }
   def take(n: Int) = this.copy(query = query.copy(limit = Some(n)))
+
+  def run[F[_]](
+      ds: Datastore[F],
+      namespace: String,
+      readConsistency: ReadConsistency.Value
+  )(implicit
+      serializer: BodySerializer[RunQueryRequest],
+      deserializer: BodyDeserializer[RunQueryResponse]
+  ) = {
+    ds.runQuery(this, namespace, readConsistency)
+  }
+
+  def run[F[_]](ds: Datastore[F])(implicit
+      serializer: BodySerializer[RunQueryRequest],
+      deserializer: BodyDeserializer[RunQueryResponse]
+  ) = {
+    ds.runQuery(this, null, ReadConsistency.STRONG)
+  }
+
+  def run[F[_]](
+      tx: Transaction[F],
+      namespace: String
+  )(implicit
+      serializer: BodySerializer[RunQueryRequest],
+      deserializer: BodyDeserializer[RunQueryResponse]
+  ) = {
+    tx.runQuery(this, namespace)
+  }
+
+  def run[F[_]](tx: Transaction[F])(implicit
+      serializer: BodySerializer[RunQueryRequest],
+      deserializer: BodyDeserializer[RunQueryResponse]
+  ) = {
+    tx.runQuery(this, null)
+  }
 }
 
 object Query {

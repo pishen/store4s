@@ -1,10 +1,11 @@
 # store4s
 
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/net.pishen/store4s_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/net.pishen/store4s_2.13)
-[![javadoc](https://javadoc.io/badge2/net.pishen/store4s_2.13/javadoc.svg)](https://javadoc.io/doc/net.pishen/store4s_2.13)
+[![javadoc](https://javadoc.io/badge2/net.pishen/store4s-sttp_2.13/javadoc.svg)](https://javadoc.io/doc/net.pishen/store4s-sttp_2.13)
 
 A Scala library for [Firestore in Datastore mode](https://cloud.google.com/datastore), providing compile-time mappings between case classes and Datastore entities, a type-safe query DSL, and asynchronous interfaces.
 
+### Create an Entity
 ```scala
 // Google's Java library
 val taskKey = datastore.newKeyFactory().setKind("Task").newKey("sampleTask")
@@ -17,7 +18,10 @@ val task = Entity.newBuilder(taskKey)
 
 // store4s
 val task = Task("Personal", false, 4, "Learn Cloud Datastore").asEntity("sampleTask")
+```
 
+### Create a Query
+```scala
 // Google's Java library
 val query = Query.newEntityQueryBuilder()
   .setKind("Task")
@@ -44,6 +48,8 @@ val query = Query.from[Task]
 ```scala
 "net.pishen" %% "store4s-sttp" % "<version>"
 ```
+
+Java 11 is required since version 0.16.0.
 
 store4s uses [sttp](https://sttp.softwaremill.com/en/stable/index.html) to connect with [Datastore's REST API](https://cloud.google.com/datastore/docs/reference/data/rest/v1/projects). By using sttp, you can integrate store4s with the [HTTP backend](https://sttp.softwaremill.com/en/stable/backends/summary.html) and [JSON library](https://sttp.softwaremill.com/en/stable/json.html) you are using. (e.g. akka-http with circe, or http4s with play-json ...etc)
 
@@ -157,6 +163,14 @@ val query = Query.from[Task]
 Drop this Query object into `runQuery` to get the result:
 ```scala
 val res = ds.runQuery(query)
+
+res.toSeq // Seq[Task]
+res.endCursor // String
+```
+
+One can also trigger the run function directly from query object:
+```scala
+val res = query.run(ds)
 
 res.toSeq // Seq[Task]
 res.endCursor // String
