@@ -292,8 +292,7 @@ class DatastoreSpec extends AnyFlatSpec {
     implicit val ds = buildDS(backend)
 
     case class Zombie(name: String)
-    val res =
-      ds.runQuery(Query.from[Zombie].filter(_.name == "Sakura Minamoto"))
+    val res = Query.from[Zombie].filter(_.name == "Sakura Minamoto").run(ds)
 
     val req = backend.allInteractions.head._1
     assert(req.method == Method.POST)
