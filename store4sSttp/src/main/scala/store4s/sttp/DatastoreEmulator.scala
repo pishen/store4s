@@ -106,24 +106,39 @@ case class DatastoreEmulator[F[_]](projectId: String, me: MonadError[F])
     case Filter(Some(compositeFilter), None) =>
       compositeFilter.filters.forall(f => applyFilter(f, e))
     case Filter(None, Some(propertyFilter)) =>
-      val name = propertyFilter.property.name
-      e.properties.get(name) match {
-        case Some(value) =>
-          val qValue = propertyFilter.value
-          propertyFilter.op match {
-            case "EQUAL" =>
-              value == qValue
-            case "LESS_THAN" =>
-              value < qValue
-            case "LESS_THAN_OR_EQUAL" =>
-              value <= qValue
-            case "GREATER_THAN" =>
-              value > qValue
-            case "GREATER_THAN_OR_EQUAL" =>
-              value >= qValue
-            case _ => ???
-          }
-        case None => false
+      val path = propertyFilter.property.name
+      val names = path.split("\\.").toSeq
+      // Traverse nested properties and expand array value
+      val values = names.foldLeft(Seq(Value(entityValue = Some(e)))) {
+        (values, name) =>
+          values
+            .flatMap(_.entityValue)
+            .flatMap(_.properties.get(name))
+            .flatMap { value =>
+              value.arrayValue.map(_.values).getOrElse(Seq(value))
+            }
+      }
+      val qValue = propertyFilter.value
+      /* Follow the rule of multiple equality filters, where tags.exists(_ == "A") && tags.exists(_ == "B")
+         will return true for Entity(tags = Seq("A"))
+         https://cloud.google.com/datastore/docs/concepts/queries#multiple_equality_filters
+         Also note that rule of multiple inequality filters is not followed yet.
+         https://cloud.google.com/datastore/docs/concepts/queries#inequality_filters
+       */
+      values.exists { value =>
+        propertyFilter.op match {
+          case "EQUAL" =>
+            value == qValue
+          case "LESS_THAN" =>
+            value < qValue
+          case "LESS_THAN_OR_EQUAL" =>
+            value <= qValue
+          case "GREATER_THAN" =>
+            value > qValue
+          case "GREATER_THAN_OR_EQUAL" =>
+            value >= qValue
+          case _ => ???
+        }
       }
     case _ => sys.error("Invalid Filter format")
   }
