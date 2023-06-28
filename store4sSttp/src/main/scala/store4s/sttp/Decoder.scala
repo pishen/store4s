@@ -73,7 +73,8 @@ object ValueDecoder {
     )
   implicit def optionDecoder[T](implicit dec: ValueDecoder[T]) =
     new ValueDecoder[Option[T]] {
-      def decode(v: Value) = if (v.nullValue.nonEmpty) {
+      // Datastore returns null Value as { "nullValue": null } but not { "nullValue": "NULL_VALUE" }
+      def decode(v: Value) = if (v == Value()) {
         Right(None)
       } else {
         dec.decode(v).map(t => Some(t))
@@ -105,10 +106,7 @@ object EntityDecoder {
     for {
       v <- e.properties
         .get(fieldName)
-        .orElse(
-          Some(Value(nullValue = Some("NULL_VALUE")))
-            .filter(_ => hDecoder.acceptOption)
-        )
+        .orElse(Some(Value()).filter(_ => hDecoder.acceptOption))
         .toRight(EntityDecodeError(fieldName))
       h <- hDecoder.decode(v)
       t <- tDecoder.decode(e)

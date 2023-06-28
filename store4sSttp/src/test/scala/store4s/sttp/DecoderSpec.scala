@@ -51,7 +51,7 @@ class DecoderSpec extends AnyFlatSpec {
     val ans = User(None, None)
     val entity = Entity(
       Some(Key(partitionId, Seq(PathElement("User", None, None)))),
-      Map("name" -> Value(nullValue = Some("NULL_VALUE")))
+      Map("name" -> Value())
     )
     assert(EntityDecoder[User].decode(entity) == Right(ans))
   }
