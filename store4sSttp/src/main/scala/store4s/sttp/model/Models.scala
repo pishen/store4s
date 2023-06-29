@@ -10,7 +10,7 @@ case class TransactionOptions(
     readOnly: Option[ReadOnly]
 )
 case class LatLng(latitude: Double, longitude: Double)
-case class ArrayValue(values: Seq[Value])
+case class ArrayValue(values: Option[Seq[Value]])
 case class Value(
     // Value returned from Datastore may not have this field
     excludeFromIndexes: Option[Boolean] = None,
@@ -78,17 +78,13 @@ case class CommitRequest(
     mutations: Seq[Mutation],
     transaction: Option[String]
 )
-case class CommitResponse(
-    mutationResults: Seq[MutationResult],
-    indexUpdates: Int
-)
+case class CommitResponse(mutationResults: Seq[MutationResult])
 case class LookupRequest(
     readOptions: ReadOptions,
     keys: Seq[Key]
 )
 case class LookupResponse(
     found: Option[Seq[EntityResult]],
-    missing: Option[Seq[EntityResult]],
     deferred: Option[Seq[Key]]
 )
 case class RollbackRequest(transaction: String)

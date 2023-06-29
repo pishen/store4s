@@ -69,7 +69,7 @@ object ValueDecoder {
     create[Seq[T]](
       _.arrayValue
         .toRight(decodeError("Seq"))
-        .flatMap(_.values.toList.traverse(dec.decode))
+        .flatMap(_.values.getOrElse(Seq.empty).toList.traverse(dec.decode))
     )
   implicit def optionDecoder[T](implicit dec: ValueDecoder[T]) =
     new ValueDecoder[Option[T]] {

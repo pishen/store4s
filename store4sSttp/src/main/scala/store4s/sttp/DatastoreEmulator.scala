@@ -115,7 +115,7 @@ case class DatastoreEmulator[F[_]](projectId: String, me: MonadError[F])
             .flatMap(_.entityValue)
             .flatMap(_.properties.get(name))
             .flatMap { value =>
-              value.arrayValue.map(_.values).getOrElse(Seq(value))
+              value.arrayValue.flatMap(_.values).getOrElse(Seq(value))
             }
       }
       val qValue = propertyFilter.value

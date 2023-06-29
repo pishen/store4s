@@ -70,7 +70,7 @@ class DatastoreSpec extends AnyFlatSpec {
     SttpBackendStub.synchronous
       .whenRequestMatches(_.uri.path.last == "store4s:commit")
       .thenRespond(
-        CommitResponse(Seq(MutationResult(None, "1")), 1).asJson.noSpaces
+        CommitResponse(Seq(MutationResult(None, "1"))).asJson.noSpaces
       )
   )
 
@@ -208,11 +208,7 @@ class DatastoreSpec extends AnyFlatSpec {
       SttpBackendStub.synchronous
         .whenRequestMatches(_.uri.path.last == "store4s:lookup")
         .thenRespond(
-          LookupResponse(
-            Some(Seq(EntityResult(e, None))),
-            None,
-            None
-          ).asJson.noSpaces
+          LookupResponse(Some(Seq(EntityResult(e, None))), None).asJson.noSpaces
         )
     )
     implicit val ds = buildDS(backend)
@@ -242,11 +238,7 @@ class DatastoreSpec extends AnyFlatSpec {
       SttpBackendStub.synchronous
         .whenRequestMatches(_.uri.path.last == "store4s:lookup")
         .thenRespond(
-          LookupResponse(
-            Some(Seq(EntityResult(e, None))),
-            None,
-            None
-          ).asJson.noSpaces
+          LookupResponse(Some(Seq(EntityResult(e, None))), None).asJson.noSpaces
         )
     )
     implicit val ds = buildDS(backend)
@@ -337,15 +329,11 @@ class DatastoreSpec extends AnyFlatSpec {
         .thenRespond(BeginTransactionResponse("magic-tx").asJson.noSpaces)
         .whenRequestMatches(_.uri.path.last == "store4s:lookup")
         .thenRespond(
-          LookupResponse(
-            Some(Seq(EntityResult(e, None))),
-            None,
-            None
-          ).asJson.noSpaces
+          LookupResponse(Some(Seq(EntityResult(e, None))), None).asJson.noSpaces
         )
         .whenRequestMatches(_.uri.path.last == "store4s:commit")
         .thenRespond(
-          CommitResponse(Seq(MutationResult(None, "1")), 1).asJson.noSpaces
+          CommitResponse(Seq(MutationResult(None, "1"))).asJson.noSpaces
         )
     )
     implicit val ds = buildDS(backend)
@@ -424,14 +412,10 @@ class DatastoreSpec extends AnyFlatSpec {
         .thenRespond(BeginTransactionResponse("magic-tx").asJson.noSpaces)
         .whenRequestMatches(_.uri.path.last == "store4s:lookup")
         .thenRespond(
-          LookupResponse(
-            Some(Seq(EntityResult(e, None))),
-            None,
-            None
-          ).asJson.noSpaces
+          LookupResponse(Some(Seq(EntityResult(e, None))), None).asJson.noSpaces
         )
         .whenRequestMatches(_.uri.path.last == "store4s:commit")
-        .thenRespond(CommitResponse(Seq.empty, 1).asJson.noSpaces)
+        .thenRespond(CommitResponse(Seq.empty).asJson.noSpaces)
     )
     implicit val ds = buildDS(backend)
 

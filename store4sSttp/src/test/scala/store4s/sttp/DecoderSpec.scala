@@ -66,14 +66,29 @@ class DecoderSpec extends AnyFlatSpec {
         "members" -> Value(
           arrayValue = Some(
             ArrayValue(
-              Seq(
-                Value(stringValue = Some("A")),
-                Value(stringValue = Some("B")),
-                Value(stringValue = Some("C"))
+              Some(
+                Seq(
+                  Value(stringValue = Some("A")),
+                  Value(stringValue = Some("B")),
+                  Value(stringValue = Some("C"))
+                )
               )
             )
           )
         )
+      )
+    )
+    assert(EntityDecoder[Group].decode(entity) == Right(ans))
+  }
+
+  it should "support empty list" in {
+    case class Group(id: Int, members: Seq[String])
+    val ans = Group(1, Seq())
+    val entity = Entity(
+      Some(Key(partitionId, Seq(PathElement("Group", None, None)))),
+      Map(
+        "id" -> Value(integerValue = Some("1")),
+        "members" -> Value(arrayValue = Some(ArrayValue(None)))
       )
     )
     assert(EntityDecoder[Group].decode(entity) == Right(ans))

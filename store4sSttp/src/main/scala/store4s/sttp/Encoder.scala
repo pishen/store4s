@@ -58,7 +58,7 @@ object ValueEncoder {
     create[Seq[T]]((seq, e) =>
       Value(
         Some(e),
-        arrayValue = Some(ArrayValue(seq.map(t => enc.encode(t, e))))
+        arrayValue = Some(ArrayValue(Some(seq.map(t => enc.encode(t, e)))))
       )
     )
   implicit def optionEncoder[T](implicit enc: ValueEncoder[T]) =

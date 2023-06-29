@@ -48,10 +48,12 @@ class EncoderSpec extends AnyFlatSpec {
           Some(false),
           arrayValue = Some(
             ArrayValue(
-              Seq(
-                Value(Some(false), stringValue = Some("A")),
-                Value(Some(false), stringValue = Some("B")),
-                Value(Some(false), stringValue = Some("C"))
+              Some(
+                Seq(
+                  Value(Some(false), stringValue = Some("A")),
+                  Value(Some(false), stringValue = Some("B")),
+                  Value(Some(false), stringValue = Some("C"))
+                )
               )
             )
           )
@@ -113,10 +115,12 @@ class EncoderSpec extends AnyFlatSpec {
           Some(true),
           arrayValue = Some(
             ArrayValue(
-              Seq(
-                Value(Some(true), stringValue = Some("A")),
-                Value(Some(true), stringValue = Some("B")),
-                Value(Some(true), stringValue = Some("C"))
+              Some(
+                Seq(
+                  Value(Some(true), stringValue = Some("A")),
+                  Value(Some(true), stringValue = Some("B")),
+                  Value(Some(true), stringValue = Some("C"))
+                )
               )
             )
           )
