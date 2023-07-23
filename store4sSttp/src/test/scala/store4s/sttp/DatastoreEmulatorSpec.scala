@@ -31,4 +31,12 @@ class DatastoreEmulatorSpec extends AnyFlatSpec {
       .toSeq
     assert(res == Seq(group))
   }
+
+  it should "support null value" in {
+    implicit val ds = DatastoreEmulator.synchronous("store4s")
+    case class Zombie(name: String, birthday: Option[String])
+    val z = Zombie("Tae Yamada", None)
+    ds.insert(z.asEntity("zero"))
+    assert(ds.lookupByName[Zombie]("zero").get == z)
+  }
 }

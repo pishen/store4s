@@ -74,10 +74,12 @@ object ValueDecoder {
   implicit def optionDecoder[T](implicit dec: ValueDecoder[T]) =
     new ValueDecoder[Option[T]] {
       // Datastore returns null Value as { "nullValue": null } but not { "nullValue": "NULL_VALUE" }
-      def decode(v: Value) = if (v.copy(excludeFromIndexes = None) == Value()) {
-        Right(None)
-      } else {
-        dec.decode(v).map(t => Some(t))
+      def decode(v: Value) = {
+        if (v.copy(excludeFromIndexes = None, nullValue = None) == Value()) {
+          Right(None)
+        } else {
+          dec.decode(v).map(t => Some(t))
+        }
       }
       override def acceptOption = true
     }
