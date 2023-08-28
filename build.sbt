@@ -58,7 +58,7 @@ lazy val store4sSttp = project
     name := "store4s-sttp",
     libraryDependencies ++= Seq(
       "com.softwaremill.sttp.client3" %% "core" % "3.8.15",
-      "com.google.auth" % "google-auth-library-oauth2-http" % "1.12.0",
+      "com.google.auth" % "google-auth-library-oauth2-http" % "1.19.0",
       "io.circe" %% "circe-generic" % "0.14.1" % Test,
       "com.softwaremill.sttp.client3" %% "circe" % "3.8.15" % Test
     )
