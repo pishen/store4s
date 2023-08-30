@@ -1,6 +1,8 @@
 package store4s.sttp
 
 import com.google.auth.oauth2.GoogleCredentials
+import com.google.auth.oauth2.ServiceAccountCredentials
+import com.google.auth.oauth2.UserCredentials
 import store4s.sttp.model.{Query => _, _}
 import sttp.client3._
 import sttp.monad.MonadError
@@ -322,8 +324,11 @@ case class DatastoreImpl[F[_], P](
 }
 
 object Datastore {
-  def defaultProjectId =
-    GoogleCredentials.getApplicationDefault().getQuotaProjectId()
+  def defaultProjectId = GoogleCredentials.getApplicationDefault() match {
+    case c: ServiceAccountCredentials => c.getProjectId()
+    case c: UserCredentials           => c.getQuotaProjectId()
+    case c                            => sys.error(s"Can't find a default project id from $c")
+  }
 
   def apply[F[_], P](
       accessToken: AccessToken = new AccessTokenImpl(),

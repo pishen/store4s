@@ -8,7 +8,10 @@ trait AccessToken {
 
 class AccessTokenImpl() extends AccessToken {
   def newToken() = {
-    GoogleCredentials.getApplicationDefault().refreshAccessToken()
+    GoogleCredentials
+      .getApplicationDefault()
+      .createScoped("https://www.googleapis.com/auth/cloud-platform")
+      .refreshAccessToken()
   }
 
   @volatile
