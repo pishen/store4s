@@ -314,6 +314,51 @@ class DatastoreSpec extends AnyFlatSpec {
     assert(res.endCursor == "xyz")
   }
 
+  it should "support runQuery with NOT_FINISHED" in {
+    val responses = Seq(
+      ("Sakura Minamoto", "NOT_FINISHED"),
+      ("Saki Nikaido", "NO_MORE_RESULTS")
+    ).map { case (name, moreResults) =>
+      val e = Entity(
+        Some(
+          Key(
+            PartitionId("store4s", None),
+            Seq(PathElement("Zombie", None, Some(name)))
+          )
+        ),
+        Map("name" -> Value(stringValue = Some(name)))
+      )
+      RunQueryResponse(
+        QueryResultBatch(
+          None,
+          None,
+          "FULL",
+          Some(Seq(EntityResult(e, None))),
+          s"cursor_${name}",
+          moreResults
+        )
+      ).asJson.noSpaces
+    }
+    val backend = new RecordingSttpBackend(
+      SttpBackendStub.synchronous
+        .whenRequestMatches(_.uri.path.last == "store4s:runQuery")
+        .thenRespondCyclic(responses: _*)
+    )
+    implicit val ds = buildDS(backend)
+
+    case class Zombie(name: String)
+    val res = Query.from[Zombie].run(ds)
+
+    val reqs = backend.allInteractions.map(_._1)
+    assert(reqs.size == 2)
+    assert(
+      decodeBody[RunQueryRequest](reqs(1).body).query.startCursor ==
+        Some("cursor_Sakura Minamoto")
+    )
+    assert(res.toSeq == Seq(Zombie("Sakura Minamoto"), Zombie("Saki Nikaido")))
+    assert(res.endCursor == "cursor_Saki Nikaido")
+  }
+
   it should "support transaction" in {
     val key = Key(
       PartitionId("store4s", None),

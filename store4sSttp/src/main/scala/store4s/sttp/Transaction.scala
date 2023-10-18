@@ -130,16 +130,36 @@ case class TransactionImpl[F[_], P](
       serializer: BodySerializer[RunQueryRequest],
       deserializer: BodyDeserializer[RunQueryResponse]
   ) = {
-    val body = RunQueryRequest(
-      PartitionId(ds.projectId, Option(namespace)),
-      ReadOptions(None, Some(id)),
-      query.query
-    )
-    ds.authRequest
-      .body(body)
-      .post(ds.buildUri("runQuery"))
-      .response(deserializer.value.getRight)
-      .send(ds.backend)
-      .map(resp => Query.Result[query.selector.R](resp.body.batch))
+    def sendRequest(query: Query[S]): F[QueryResultBatch] = {
+      val body = RunQueryRequest(
+        PartitionId(ds.projectId, Option(namespace)),
+        ReadOptions(None, Some(id)),
+        query.query
+      )
+      ds.authRequest
+        .body(body)
+        .post(ds.buildUri("runQuery"))
+        .response(deserializer.value.getRight)
+        .send(ds.backend)
+        .map(_.body.batch)
+    }
+    def next(f: F[QueryResultBatch]): F[QueryResultBatch] = {
+      f.flatMap { res =>
+        if (res.moreResults == "NOT_FINISHED") {
+          next(
+            sendRequest(query.startCursor(res.endCursor)).map(newRes =>
+              newRes.copy(
+                entityResults = res.entityResults.map(
+                  _ ++ newRes.entityResults.getOrElse(Seq.empty)
+                )
+              )
+            )
+          )
+        } else {
+          responseMonad.unit(res)
+        }
+      }
+    }
+    next(sendRequest(query)).map(batch => Query.Result[query.selector.R](batch))
   }
 }
