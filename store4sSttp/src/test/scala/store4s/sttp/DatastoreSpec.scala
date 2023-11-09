@@ -70,7 +70,7 @@ class DatastoreSpec extends AnyFlatSpec {
     SttpBackendStub.synchronous
       .whenRequestMatches(_.uri.path.last == "store4s:commit")
       .thenRespond(
-        CommitResponse(Seq(MutationResult(None, "1"))).asJson.noSpaces
+        CommitResponse(Some(Seq(MutationResult(None, "1")))).asJson.noSpaces
       )
   )
 
@@ -378,7 +378,7 @@ class DatastoreSpec extends AnyFlatSpec {
         )
         .whenRequestMatches(_.uri.path.last == "store4s:commit")
         .thenRespond(
-          CommitResponse(Seq(MutationResult(None, "1"))).asJson.noSpaces
+          CommitResponse(Some(Seq(MutationResult(None, "1")))).asJson.noSpaces
         )
     )
     implicit val ds = buildDS(backend)
@@ -460,7 +460,7 @@ class DatastoreSpec extends AnyFlatSpec {
           LookupResponse(Some(Seq(EntityResult(e, None))), None).asJson.noSpaces
         )
         .whenRequestMatches(_.uri.path.last == "store4s:commit")
-        .thenRespond(CommitResponse(Seq.empty).asJson.noSpaces)
+        .thenRespond(CommitResponse(None).asJson.noSpaces)
     )
     implicit val ds = buildDS(backend)
 

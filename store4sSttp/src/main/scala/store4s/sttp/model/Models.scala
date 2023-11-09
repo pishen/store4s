@@ -78,7 +78,7 @@ case class CommitRequest(
     mutations: Seq[Mutation],
     transaction: Option[String]
 )
-case class CommitResponse(mutationResults: Seq[MutationResult])
+case class CommitResponse(mutationResults: Option[Seq[MutationResult]])
 case class LookupRequest(
     readOptions: ReadOptions,
     keys: Seq[Key]

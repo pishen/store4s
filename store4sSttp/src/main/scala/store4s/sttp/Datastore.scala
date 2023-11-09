@@ -218,7 +218,7 @@ case class DatastoreImpl[F[_], P](
       .post(buildUri("commit"))
       .response(deserializer.value.getRight)
       .send(backend)
-      .map(_.body.mutationResults.map(_.key))
+      .map(_.body.mutationResults.getOrElse(Seq.empty).map(_.key))
   }
 
   def lookup(keys: Seq[Key], readConsistency: ReadConsistency.Value)(implicit
