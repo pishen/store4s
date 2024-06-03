@@ -8,8 +8,9 @@ import sttp.client3.IsOption
 import sttp.client3.circe._
 
 class DatastoreEmulatorSpec extends AnyFlatSpec {
-  implicit val printerDrop = Printer.noSpaces.copy(dropNullValues = true)
-  implicit def deserializer[B: Decoder: IsOption] =
+  implicit val printerDrop: Printer =
+    Printer.noSpaces.copy(dropNullValues = true)
+  implicit def deserializer[B: Decoder: IsOption]: BodyDeserializer[B] =
     BodyDeserializer.from(asJson[B])
 
   "A DatastoreEmulator" should "support insert" in {

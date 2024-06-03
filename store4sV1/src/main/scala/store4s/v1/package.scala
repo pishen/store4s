@@ -4,7 +4,6 @@ import com.google.datastore.v1.CompositeFilter
 import com.google.datastore.v1.Entity
 import com.google.datastore.v1.Filter
 
-import scala.language.implicitConversions
 import scala.reflect.runtime.universe._
 
 package object v1 {
@@ -20,9 +19,9 @@ package object v1 {
       encoder.encode(obj, Some(ds.buildKey[A](id)), Set.empty[String])
 
     def asEntity[B](f: A => B): Entity = f(obj) match {
-      case id: Int   => asEntity(id.toLong)
-      case id: Long  => asEntity(id)
-      case name: Any => asEntity(name.toString())
+      case id: Int  => asEntity(id.toLong)
+      case id: Long => asEntity(id)
+      case name     => asEntity(name.toString())
     }
   }
 

@@ -183,7 +183,7 @@ case class DatastoreImpl[F[_], P](
     projectId: String,
     backend: SttpBackend[F, P]
 ) extends Datastore[F] {
-  implicit val responseMonad = backend.responseMonad
+  implicit val responseMonad: MonadError[F] = backend.responseMonad
 
   def authRequest = basicRequest.auth.bearer(accessToken.get())
 

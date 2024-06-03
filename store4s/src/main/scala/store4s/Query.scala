@@ -11,7 +11,6 @@ import com.google.cloud.datastore.StructuredQuery.PropertyFilter
 import com.google.cloud.datastore.{Query => GQuery}
 
 import scala.jdk.CollectionConverters._
-import scala.language.experimental.macros
 import scala.reflect.macros.whitebox.Context
 
 case class Query[S, T: EntityDecoder](
