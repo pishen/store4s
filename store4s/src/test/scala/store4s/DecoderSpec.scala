@@ -15,7 +15,7 @@ class DecoderSpec extends AnyFlatSpec with EitherValues with MockFactory {
   val keyFactory = new KeyFactory("store4s")
 
   val mockGDatastore = mock[GDatastore]
-  implicit val ds = Datastore(mockGDatastore)
+  implicit val ds: Datastore = Datastore(mockGDatastore)
 
   "An EntityDecoder" should "decode Entity into case class" in {
     val zG = Entity
@@ -36,7 +36,7 @@ class DecoderSpec extends AnyFlatSpec with EitherValues with MockFactory {
       .newBuilder()
       .set("id", "abc")
       .build()
-    case class User(id: Int)
+    case class User(id: Long)
 
     assert(decodeEntity[User](e).left.value.isInstanceOf[ClassCastException])
   }

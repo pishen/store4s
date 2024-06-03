@@ -7,7 +7,6 @@ import store4s.sttp.model.Key
 import store4s.sttp.model.PartitionId
 import store4s.sttp.model.PathElement
 
-import scala.language.implicitConversions
 import scala.reflect.runtime.universe._
 
 package object sttp {

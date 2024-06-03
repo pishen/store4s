@@ -15,7 +15,7 @@ import scala.jdk.CollectionConverters._
 
 class EncoderSpec extends AnyFlatSpec with OneInstancePerTest {
   val options = new DatastoreOptions.Builder().projectId("store4s").build()
-  implicit val datastore = Datastore(options)
+  implicit val datastore: Datastore = Datastore(options)
 
   def entityBuilder(kind: String) = Entity
     .newBuilder()

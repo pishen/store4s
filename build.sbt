@@ -1,32 +1,16 @@
+import org.typelevel.scalacoptions.ScalacOptions
+
 name := "store4s"
 
-ThisBuild / scalaVersion := "2.13.10"
-ThisBuild / crossScalaVersions := Seq("2.13.10", "2.12.13")
+ThisBuild / scalaVersion := "2.13.14"
+ThisBuild / tpolecatExcludeOptions ++= Set(
+  ScalacOptions.warnNonUnitStatement,
+  ScalacOptions.warnNumericWiden
+)
 
 val commonSettings = Seq(
-  scalacOptions ++= {
-    val common = Seq(
-      "-feature",
-      "-deprecation",
-      "-language:higherKinds",
-      "-Ywarn-unused:implicits",
-      "-Ywarn-unused:imports",
-      "-Ywarn-unused:locals",
-      "-Ywarn-unused:params",
-      "-Ywarn-unused:patvars",
-      "-Ywarn-unused:privates",
-      //https://stackoverflow.com/questions/56351793
-      "-Ywarn-macros:after"
-    )
-    CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, 12)) => common :+ "-Ypartial-unification" // for cats
-      case _             => common
-    }
-  },
-  Compile / console / scalacOptions --= Seq("-Ywarn-unused:imports"),
   libraryDependencies ++= Seq(
     "com.chuusai" %% "shapeless" % "2.3.7",
-    "org.scala-lang.modules" %% "scala-collection-compat" % "2.9.0",
     "org.scala-lang" % "scala-reflect" % scalaVersion.value,
     "org.typelevel" %% "cats-core" % "2.6.1",
     "org.scalamock" %% "scalamock" % "5.1.0" % Test,

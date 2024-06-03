@@ -17,7 +17,7 @@ class EncoderSpec extends AnyFlatSpec with OneInstancePerTest with MockFactory {
   val keyFactory = new KeyFactory("store4s")
   (mockGDatastore.newKeyFactory _).expects().returning(keyFactory)
 
-  implicit val datastore = Datastore(mockGDatastore)
+  implicit val datastore: Datastore = Datastore(mockGDatastore)
 
   "An EntityEncoder" should "generate same output as Google Cloud Java" in {
     val zG = Entity

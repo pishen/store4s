@@ -16,7 +16,6 @@ import com.google.protobuf.ByteString
 import com.google.protobuf.Int32Value
 
 import scala.jdk.CollectionConverters._
-import scala.language.experimental.macros
 import scala.reflect.macros.whitebox.Context
 
 case class Query[S, T: EntityDecoder](

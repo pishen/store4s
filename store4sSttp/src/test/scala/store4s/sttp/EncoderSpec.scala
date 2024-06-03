@@ -8,7 +8,7 @@ import sttp.client3.testing.SttpBackendStub
 import java.time.LocalDate
 
 class EncoderSpec extends AnyFlatSpec {
-  implicit val ds = Datastore[Identity, Any](
+  implicit val ds: Datastore[Identity] = Datastore[Identity, Any](
     new AccessToken { def get() = "token" },
     "store4s",
     SttpBackendStub.synchronous

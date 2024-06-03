@@ -17,8 +17,9 @@ import sttp.model.Method
 import scala.util.Random
 
 class DatastoreSpec extends AnyFlatSpec {
-  implicit val printerDrop = Printer.noSpaces.copy(dropNullValues = true)
-  implicit def deserializer[B: Decoder: IsOption] =
+  implicit val printerDrop: Printer =
+    Printer.noSpaces.copy(dropNullValues = true)
+  implicit def deserializer[B: Decoder: IsOption]: BodyDeserializer[B] =
     BodyDeserializer.from(asJson[B])
 
   def buildDS[F[_], P](backend: SttpBackend[F, P]) = Datastore(

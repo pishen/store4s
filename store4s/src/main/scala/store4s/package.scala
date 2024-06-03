@@ -5,7 +5,6 @@ import com.google.cloud.datastore.Key
 import com.google.cloud.datastore.StructuredQuery.CompositeFilter
 import com.google.cloud.datastore.StructuredQuery.Filter
 
-import scala.language.implicitConversions
 import scala.reflect.runtime.universe._
 
 package object store4s {
@@ -30,9 +29,9 @@ package object store4s {
     }
 
     def asEntity[B](f: A => B): Entity = f(obj) match {
-      case id: Int   => asEntity(id.toLong)
-      case id: Long  => asEntity(id)
-      case name: Any => asEntity(name.toString())
+      case id: Int  => asEntity(id.toLong)
+      case id: Long => asEntity(id)
+      case name     => asEntity(name.toString())
     }
   }
 

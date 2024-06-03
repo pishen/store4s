@@ -12,7 +12,6 @@ import store4s.sttp.model.RunQueryRequest
 import store4s.sttp.model.RunQueryResponse
 import sttp.client3._
 
-import scala.language.experimental.macros
 import scala.reflect.macros.whitebox.Context
 
 trait Selector { type R }
