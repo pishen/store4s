@@ -17,10 +17,7 @@ import scala.reflect.macros.whitebox.Context
 
 trait Selector { type R }
 
-case class Query[S <: Selector](
-    selector: S,
-    q: GQuery
-) {
+case class Query[S <: Selector](selector: S, q: GQuery) {
   def filter(f: S => Filter) = {
     val newFilter = q.filter
       .map(oldFilter =>
