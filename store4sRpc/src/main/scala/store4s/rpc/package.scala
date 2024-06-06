@@ -8,4 +8,8 @@ package object rpc {
     def asEntity(name: String): Entity = enc.withName(_ => name).encodeEntity(t)
     def asEntity: Entity = enc.encodeEntity(t)
   }
+
+  implicit class EntityOps(entity: Entity) {
+    def as[T: Decoder]: T = implicitly[Decoder[T]].decodeEntity(entity)
+  }
 }

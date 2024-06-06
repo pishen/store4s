@@ -47,7 +47,7 @@ case class Encoder[T](
         PartitionId(projectId = projectId, namespaceId = namespaceId)
       )
       .addPath(PathElement(kind = kind, idType = idType(t)))
-    encode(t).getEntityValue.withKey(key)
+    encode(t).valueType.entityValue.get.withKey(key)
   }
 
   def withId(f: T => Long) = this.copy(idType = f.andThen(IdType.Id))

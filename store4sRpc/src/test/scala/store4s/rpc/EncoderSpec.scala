@@ -11,7 +11,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import java.time.LocalDate
 
 class EncoderSpec extends AnyFlatSpec {
-  "An Encoder" should "encode case class into Entity" in {
+  "Encoder" should "encode case class into Entity" in {
     val ans = Entity()
       .withKey(
         Key()
