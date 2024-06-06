@@ -13,6 +13,7 @@ import com.google.datastore.v1.query.QueryResultBatch
 import com.google.datastore.v1.query.{Query => GQuery}
 import com.google.protobuf.ByteString
 
+import scala.concurrent.ExecutionContext
 import scala.reflect.macros.whitebox.Context
 
 trait Selector { type R }
@@ -38,7 +39,7 @@ case class Query[S <: Selector](selector: S, q: GQuery) {
   }
   def take(n: Int) = this.copy(q = q.withLimit(n))
 
-  // TODO: add run
+  def run(ds: Datastore)(implicit ec: ExecutionContext) = ds.runQuery(this)
 }
 
 object Query {
