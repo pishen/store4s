@@ -21,6 +21,7 @@ case class Encoder[T](
     kind: String = "",
     idType: T => IdType = (_: T) => IdType.Empty,
     projectId: String = Datastore.defaultProjectId,
+    databaseId: String = "",
     namespaceId: String = "",
     excludedFields: Set[String] = Set.empty
 ) {
@@ -44,7 +45,11 @@ case class Encoder[T](
   def encodeEntity(t: T): Entity = {
     val key = Key()
       .withPartitionId(
-        PartitionId(projectId = projectId, namespaceId = namespaceId)
+        PartitionId(
+          projectId = projectId,
+          databaseId = databaseId,
+          namespaceId = namespaceId
+        )
       )
       .addPath(PathElement(kind = kind, idType = idType(t)))
     encode(t).valueType.entityValue.get.withKey(key)
@@ -61,6 +66,7 @@ case class Encoder[T](
     kind,
     idType.compose(f),
     projectId,
+    databaseId,
     namespaceId,
     excludedFields
   )
