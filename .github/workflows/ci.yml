@@ -9,3 +9,5 @@ jobs:
         distribution: temurin
         java-version: 11
     - run: sbt -v -Dfile.encoding=UTF-8 +test scalafmtCheckAll
+      env:
+        DATASTORE_PROJECT_ID: store4s
