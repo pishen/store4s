@@ -139,9 +139,11 @@ case class Datastore(
 }
 
 object Datastore {
-  lazy val defaultProjectId = GoogleCredentials.getApplicationDefault() match {
-    case c: ServiceAccountCredentials => c.getProjectId()
-    case c: UserCredentials           => c.getQuotaProjectId()
-    case c                            => sys.error(s"Can't find a default project id from $c")
+  lazy val defaultProjectId = sys.env.get("DATASTORE_PROJECT_ID").getOrElse {
+    GoogleCredentials.getApplicationDefault() match {
+      case c: ServiceAccountCredentials => c.getProjectId()
+      case c: UserCredentials           => c.getQuotaProjectId()
+      case c                            => sys.error(s"Can't find a default project id from $c")
+    }
   }
 }
