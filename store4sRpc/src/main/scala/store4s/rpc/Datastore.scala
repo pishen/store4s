@@ -3,6 +3,7 @@ package store4s.rpc
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.auth.oauth2.ServiceAccountCredentials
 import com.google.auth.oauth2.UserCredentials
+import com.google.datastore.v1.datastore.AllocateIdsRequest
 import com.google.datastore.v1.datastore.CommitRequest
 import com.google.datastore.v1.datastore.CommitRequest.Mode.TRANSACTIONAL
 import com.google.datastore.v1.datastore.DatastoreGrpc
@@ -26,12 +27,10 @@ import io.grpc.auth.MoreCallCredentials
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
-import scala.reflect.runtime.universe._
 
 case class Datastore(
     projectId: String = Datastore.defaultProjectId,
     databaseId: String = "",
-    namespaceId: String = "",
     host: String = "datastore.googleapis.com",
     port: Int = 443,
     devMode: Boolean = false
@@ -48,6 +47,27 @@ case class Datastore(
       .withCallCredentials(MoreCallCredentials.from(credentials))
   }
 
+  def buildKey[T: Encoder](idType: IdType) = {
+    val enc = implicitly[Encoder[T]]
+    Key()
+      .withPartitionId(
+        PartitionId(
+          projectId = enc.projectId,
+          databaseId = enc.databaseId,
+          namespaceId = enc.namespaceId
+        )
+      )
+      .addPath(PathElement(kind = enc.kind, idType = idType))
+  }
+
+  def allocateIds[T: Encoder](numOfIds: Int)(implicit ec: ExecutionContext) = {
+    val req = AllocateIdsRequest()
+      .withProjectId(projectId)
+      .withDatabaseId(databaseId)
+      .withKeys(Seq.fill(numOfIds)(buildKey[T](IdType.Empty)))
+    stub.allocateIds(req).map(_.keys.map(_.path.head.getId))
+  }
+
   def commit(ops: Seq[Mutation.Operation]) = stub.commit(
     CommitRequest()
       .withProjectId(projectId)
@@ -57,26 +77,13 @@ case class Datastore(
       .withMutations(ops.map(op => Mutation(operation = op)))
   )
 
-  def buildKey[T: WeakTypeTag](idType: IdType) = {
-    val kind = weakTypeOf[T].typeSymbol.name.toString
-    Key()
-      .withPartitionId(
-        PartitionId(
-          projectId = projectId,
-          databaseId = databaseId,
-          namespaceId = namespaceId
-        )
-      )
-      .addPath(PathElement(kind = kind, idType = idType))
-  }
-
   def insert(entities: Entity*) = commit(entities.map(e => Insert(e)))
   def upsert(entities: Entity*) = commit(entities.map(e => Upsert(e)))
   def update(entities: Entity*) = commit(entities.map(e => Update(e)))
-  def deleteById[T: WeakTypeTag](ids: Long*) = commit(
+  def deleteById[T: Encoder](ids: Long*) = commit(
     ids.map(id => Delete(buildKey[T](IdType.Id(id))))
   )
-  def deleteByName[T: WeakTypeTag](names: String*) = commit(
+  def deleteByName[T: Encoder](names: String*) = commit(
     names.map(name => Delete(buildKey[T](IdType.Name(name))))
   )
 
@@ -89,26 +96,26 @@ case class Datastore(
     stub.lookup(req).map(_.found.map(er => dec.decodeEntity(er.getEntity)))
   }
 
-  def lookupById[T: WeakTypeTag: Decoder](ids: Long*)(implicit
+  def lookupById[T: Decoder: Encoder](ids: Long*)(implicit
       ec: ExecutionContext
   ) = lookup(ids.map(id => buildKey[T](IdType.Id(id))))
 
-  def lookupByName[T: WeakTypeTag: Decoder](names: String*)(implicit
+  def lookupByName[T: Decoder: Encoder](names: String*)(implicit
       ec: ExecutionContext
   ) = lookup(names.map(name => buildKey[T](IdType.Name(name))))
 
   def runQuery[S <: Selector](
       query: Query[S]
-  )(implicit ec: ExecutionContext) = {
+  )(implicit enc: Encoder[query.selector.R], ec: ExecutionContext) = {
     def sendRequest(query: Query[S]): Future[QueryResultBatch] = {
       val req = RunQueryRequest()
         .withProjectId(projectId)
         .withDatabaseId(databaseId)
         .withPartitionId(
           PartitionId(
-            projectId = projectId,
-            databaseId = databaseId,
-            namespaceId = namespaceId
+            projectId = enc.projectId,
+            databaseId = enc.databaseId,
+            namespaceId = enc.namespaceId
           )
         )
         .withQuery(query.q)

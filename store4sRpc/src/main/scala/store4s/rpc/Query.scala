@@ -39,7 +39,10 @@ case class Query[S <: Selector](selector: S, q: GQuery) {
   }
   def take(n: Int) = this.copy(q = q.withLimit(n))
 
-  def run(ds: Datastore)(implicit ec: ExecutionContext) = ds.runQuery(this)
+  def run(ds: Datastore)(implicit
+      enc: Encoder[selector.R],
+      ec: ExecutionContext
+  ) = ds.runQuery(this)
 }
 
 object Query {
