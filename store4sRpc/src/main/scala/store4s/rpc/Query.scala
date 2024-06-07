@@ -39,6 +39,8 @@ case class Query[S <: Selector](selector: S, q: GQuery) {
   }
   def take(n: Int) = this.copy(q = q.withLimit(n))
 
+  def toJavaProto() = GQuery.toJavaProto(q)
+
   def run(ds: Datastore)(implicit
       enc: Encoder[selector.R],
       ec: ExecutionContext
