@@ -45,6 +45,11 @@ case class Query[S <: Selector](selector: S, q: GQuery) {
       enc: Encoder[selector.R],
       ec: ExecutionContext
   ) = ds.runQuery(this)
+
+  def runTx(tx: Transaction)(implicit
+      enc: Encoder[selector.R],
+      ec: ExecutionContext
+  ) = tx.runQuery(this)
 }
 
 object Query {

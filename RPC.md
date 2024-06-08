@@ -57,11 +57,7 @@ import store4s.rpc._
 val ds = Datastore()
 ```
 
-store4s will detect the default project id using Google's [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials), but you can also specify it by yourself:
-
-```scala
-val ds = Datastore(projectId = "my-project-id")
-```
+store4s will detect the default project id using Google's [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials), but you can also specify it by setting `DATASTORE_PROJECT_ID` environment variable.
 
 ## Operations
 Here are some basic functions to interact with Datastore:
@@ -74,7 +70,13 @@ ds.deleteByName[Task](taskName)
 ds.lookupById[Task](taskId)
 ds.lookupByName[Task](taskName)
 ds.runQuery(query)
-// ds.transaction coming soon
+ds.transaction { tx =>
+  for {
+    oldTask <- tx.lookupById[Task](taskId).map(_.head)
+    newTask = changeTaskInfo(oldTask)
+    _ <- tx.update(newTask.asEntity(taskId))
+  } yield newTask
+}
 ```
 
 Note that all the operations return a `Future` immediately.
@@ -203,8 +205,6 @@ val res: SCollection[Task] = sc
   .datastore("project-id", query)
   .map(e => Entity.fromJavaProto(e).as[Task])
 ```
-
-
 
 ## Transaction
 Coming soon
