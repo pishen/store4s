@@ -207,7 +207,22 @@ val res: SCollection[Task] = sc
 ```
 
 ## Transaction
-Coming soon
+Use `transaction` to create a Transaction:
+
+```scala
+val res: Future[Task] = ds.transaction { tx =>
+  for {
+    oldTask <- tx.lookupById[Task](taskId).map(_.head)
+    newTask = changeTaskInfo(oldTask)
+    _ <- tx.update(newTask.asEntity(taskId))
+  } yield newTask
+}
+```
+
+It expects a lambda function with type `Transaction => Future[T]`, note that all the mutations will be committed after the function return, hence we can't see the mutations we make during the function. If the lambda return a failed `Future` or throw an Exception, or the commit is conflicted with other transactions, rollback will be automatically called and no changes will be applied. In this case, `transaction` will return a failed `Future` with the error cause in it.
 
 ## Emulator
-Coming soon
+To connect with [Firestore Emulator](https://cloud.google.com/datastore/docs/emulator), set the `host` and `port` with `devMode` true in `Datastore`:
+```scala
+val ds = Datastore(host = "127.0.0.1", port = 8080, devMode = true)
+```
