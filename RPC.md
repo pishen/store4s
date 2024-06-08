@@ -57,11 +57,7 @@ import store4s.rpc._
 val ds = Datastore()
 ```
 
-store4s will detect the default project id using Google's [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials), but you can also specify it by yourself:
-
-```scala
-val ds = Datastore(projectId = "my-project-id")
-```
+store4s will detect the default project id using Google's [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials), but you can also specify it by setting `DATASTORE_PROJECT_ID` environment variable.
 
 ## Operations
 Here are some basic functions to interact with Datastore:
@@ -74,7 +70,13 @@ ds.deleteByName[Task](taskName)
 ds.lookupById[Task](taskId)
 ds.lookupByName[Task](taskName)
 ds.runQuery(query)
-// ds.transaction coming soon
+ds.transaction { tx =>
+  for {
+    oldTask <- tx.lookupById[Task](taskId).map(_.head)
+    newTask = changeTaskInfo(oldTask)
+    _ <- tx.update(newTask.asEntity(taskId))
+  } yield newTask
+}
 ```
 
 Note that all the operations return a `Future` immediately.
@@ -204,10 +206,23 @@ val res: SCollection[Task] = sc
   .map(e => Entity.fromJavaProto(e).as[Task])
 ```
 
-
-
 ## Transaction
-Coming soon
+Use `transaction` to create a Transaction:
+
+```scala
+val res: Future[Task] = ds.transaction { tx =>
+  for {
+    oldTask <- tx.lookupById[Task](taskId).map(_.head)
+    newTask = changeTaskInfo(oldTask)
+    _ <- tx.update(newTask.asEntity(taskId))
+  } yield newTask
+}
+```
+
+It expects a lambda function with type `Transaction => Future[T]`, note that all the mutations will be committed after the function return, hence we can't see the mutations we make during the function. If the lambda return a failed `Future` or throw an Exception, or the commit is conflicted with other transactions, rollback will be automatically called and no changes will be applied. In this case, `transaction` will return a failed `Future` with the error cause in it.
 
 ## Emulator
-Coming soon
+To connect with [Firestore Emulator](https://cloud.google.com/datastore/docs/emulator), set the `host` and `port` with `devMode` true in `Datastore`:
+```scala
+val ds = Datastore(host = "127.0.0.1", port = 8080, devMode = true)
+```

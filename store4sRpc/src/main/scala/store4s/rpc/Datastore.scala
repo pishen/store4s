@@ -4,6 +4,7 @@ import com.google.auth.oauth2.GoogleCredentials
 import com.google.auth.oauth2.ServiceAccountCredentials
 import com.google.auth.oauth2.UserCredentials
 import com.google.datastore.v1.datastore.AllocateIdsRequest
+import com.google.datastore.v1.datastore.BeginTransactionRequest
 import com.google.datastore.v1.datastore.CommitRequest
 import com.google.datastore.v1.datastore.CommitRequest.Mode.TRANSACTIONAL
 import com.google.datastore.v1.datastore.DatastoreGrpc
@@ -13,6 +14,8 @@ import com.google.datastore.v1.datastore.Mutation.Operation.Delete
 import com.google.datastore.v1.datastore.Mutation.Operation.Insert
 import com.google.datastore.v1.datastore.Mutation.Operation.Update
 import com.google.datastore.v1.datastore.Mutation.Operation.Upsert
+import com.google.datastore.v1.datastore.ReadOptions
+import com.google.datastore.v1.datastore.RollbackRequest
 import com.google.datastore.v1.datastore.RunQueryRequest
 import com.google.datastore.v1.datastore.TransactionOptions
 import com.google.datastore.v1.datastore.TransactionOptions.ReadWrite
@@ -22,6 +25,7 @@ import com.google.datastore.v1.entity.Key.PathElement
 import com.google.datastore.v1.entity.Key.PathElement.IdType
 import com.google.datastore.v1.entity.PartitionId
 import com.google.datastore.v1.query.QueryResultBatch
+import com.google.protobuf.ByteString
 import io.grpc.ManagedChannelBuilder
 import io.grpc.auth.MoreCallCredentials
 
@@ -87,25 +91,29 @@ case class Datastore(
     names.map(name => Delete(buildKey[T](IdType.Name(name))))
   )
 
-  def lookup[T: Decoder](keys: Seq[Key])(implicit ec: ExecutionContext) = {
+  def lookup[T: Decoder](keys: Seq[Key], txId: ByteString = null)(implicit
+      ec: ExecutionContext
+  ) = {
     val dec = implicitly[Decoder[T]]
     val req = LookupRequest()
       .withProjectId(projectId)
       .withDatabaseId(databaseId)
+      .copy(readOptions = Option(txId).map(ReadOptions().withTransaction))
       .withKeys(keys)
     stub.lookup(req).map(_.found.map(er => dec.decodeEntity(er.getEntity)))
   }
 
   def lookupById[T: Decoder: Encoder](ids: Long*)(implicit
       ec: ExecutionContext
-  ) = lookup(ids.map(id => buildKey[T](IdType.Id(id))))
+  ) = lookup[T](ids.map(id => buildKey[T](IdType.Id(id))))
 
   def lookupByName[T: Decoder: Encoder](names: String*)(implicit
       ec: ExecutionContext
-  ) = lookup(names.map(name => buildKey[T](IdType.Name(name))))
+  ) = lookup[T](names.map(name => buildKey[T](IdType.Name(name))))
 
   def runQuery[S <: Selector](
-      query: Query[S]
+      query: Query[S],
+      txId: ByteString = null
   )(implicit enc: Encoder[query.selector.R], ec: ExecutionContext) = {
     def sendRequest(query: Query[S]): Future[QueryResultBatch] = {
       val req = RunQueryRequest()
@@ -118,6 +126,7 @@ case class Datastore(
             namespaceId = enc.namespaceId
           )
         )
+        .copy(readOptions = Option(txId).map(ReadOptions().withTransaction))
         .withQuery(query.q)
       stub.runQuery(req).map(_.getBatch)
     }
@@ -135,6 +144,36 @@ case class Datastore(
       }
 
     next(sendRequest(query)).map(batch => Query.Result[query.selector.R](batch))
+  }
+
+  def transaction[T](
+      f: Transaction => Future[T]
+  )(implicit ec: ExecutionContext): Future[T] = {
+    val req = BeginTransactionRequest()
+      .withProjectId(projectId)
+      .withDatabaseId(databaseId)
+      .withTransactionOptions(TransactionOptions().withReadWrite(ReadWrite()))
+    stub.beginTransaction(req).flatMap { resp =>
+      val tx = Transaction(resp.transaction, this)
+      Future
+        .delegate(f(tx))
+        .flatMap { res =>
+          val req = CommitRequest()
+            .withProjectId(projectId)
+            .withDatabaseId(databaseId)
+            .withMode(TRANSACTIONAL)
+            .withTransaction(tx.id)
+            .withMutations(tx.ops.map(op => Mutation(operation = op)))
+          stub.commit(req).map(_ => res)
+        }
+        .recoverWith { case e =>
+          val req = RollbackRequest()
+            .withProjectId(projectId)
+            .withDatabaseId(databaseId)
+            .withTransaction(tx.id)
+          stub.rollback(req).flatMap(_ => Future.failed[T](e))
+        }
+    }
   }
 }
 

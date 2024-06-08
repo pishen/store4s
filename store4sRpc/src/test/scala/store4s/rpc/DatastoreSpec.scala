@@ -15,6 +15,7 @@ import com.google.datastore.v1.datastore.Mutation.Operation.Delete
 import com.google.datastore.v1.datastore.Mutation.Operation.Insert
 import com.google.datastore.v1.datastore.Mutation.Operation.Update
 import com.google.datastore.v1.datastore.Mutation.Operation.Upsert
+import com.google.datastore.v1.datastore.ReadOptions
 import com.google.datastore.v1.datastore.ReserveIdsRequest
 import com.google.datastore.v1.datastore.ReserveIdsResponse
 import com.google.datastore.v1.datastore.RollbackRequest
@@ -49,8 +50,19 @@ case class Recorder(port: Int) extends DatastoreGrpc.Datastore {
 
   var lookupRequest: LookupRequest = null
   var runQueryRequest: RunQueryRequest = null
+  var beginTransactionRequest: BeginTransactionRequest = null
   var commitRequest: CommitRequest = null
+  var rollbackRequest: RollbackRequest = null
   var allocateIdsRequest: AllocateIdsRequest = null
+
+  def clear() = {
+    lookupRequest = null
+    runQueryRequest = null
+    beginTransactionRequest = null
+    commitRequest = null
+    rollbackRequest = null
+    allocateIdsRequest = null
+  }
 
   def now = System.currentTimeMillis()
 
@@ -102,15 +114,22 @@ case class Recorder(port: Int) extends DatastoreGrpc.Datastore {
 
   override def beginTransaction(
       request: BeginTransactionRequest
-  ): Future[BeginTransactionResponse] = ???
+  ): Future[BeginTransactionResponse] = {
+    beginTransactionRequest = request
+    Future.successful(
+      BeginTransactionResponse(transaction = ByteString.copyFromUtf8("tx-id"))
+    )
+  }
 
   override def commit(request: CommitRequest): Future[CommitResponse] = {
     commitRequest = request
     Future.successful(CommitResponse())
   }
 
-  override def rollback(request: RollbackRequest): Future[RollbackResponse] =
-    ???
+  override def rollback(request: RollbackRequest): Future[RollbackResponse] = {
+    rollbackRequest = request
+    Future.successful(RollbackResponse())
+  }
 
   override def allocateIds(
       request: AllocateIdsRequest
@@ -271,5 +290,62 @@ class DatastoreSpec extends AsyncFlatSpec with BeforeAndAfterAll {
     }
   }
 
-  //TODO: add test for transaction
+  it should "support transaction" in {
+    case class Zombie(name: String)
+
+    val txReq = BeginTransactionRequest()
+      .withProjectId(ds.projectId)
+      .withTransactionOptions(TransactionOptions().withReadWrite(ReadWrite()))
+    val key = Key()
+      .withPartitionId(PartitionId(projectId = ds.projectId))
+      .addPath(Key.PathElement(kind = "Zombie").withId(123))
+    val lookupReq = LookupRequest()
+      .withProjectId(ds.projectId)
+      .withReadOptions(
+        ReadOptions().withTransaction(ByteString.copyFromUtf8("tx-id"))
+      )
+      .addKeys(key)
+    val commitReq = CommitRequest()
+      .withProjectId(ds.projectId)
+      .withMode(TRANSACTIONAL)
+      .withTransaction(ByteString.copyFromUtf8("tx-id"))
+      .addMutations(Mutation(operation = Update(Zombie("ABC").asEntity(123))))
+
+    val f = ds.transaction { tx =>
+      for {
+        z <- tx.lookupById[Zombie](123).map(_.head)
+        e = z.copy(name = "ABC").asEntity(123)
+        _ <- tx.update(e)
+      } yield z
+    }
+    f.map { z =>
+      assert(recorder.beginTransactionRequest == txReq)
+      assert(recorder.lookupRequest == lookupReq)
+      assert(z == Zombie("Sakura Minamoto"))
+      assert(recorder.commitRequest == commitReq)
+    }
+  }
+
+  it should "rollback automatically when transaction failed" in {
+    recorder.clear()
+
+    case class Zombie(name: String)
+
+    val txReq = BeginTransactionRequest()
+      .withProjectId(ds.projectId)
+      .withTransactionOptions(TransactionOptions().withReadWrite(ReadWrite()))
+    val rollbackReq = RollbackRequest()
+      .withProjectId(ds.projectId)
+      .withTransaction(ByteString.copyFromUtf8("tx-id"))
+
+    val f = ds.transaction[Unit] { _ =>
+      sys.error("error")
+    }
+    f.failed.map { error =>
+      assert(recorder.beginTransactionRequest == txReq)
+      assert(recorder.commitRequest == null)
+      assert(recorder.rollbackRequest == rollbackReq)
+      assert(error.getMessage == "error")
+    }
+  }
 }
